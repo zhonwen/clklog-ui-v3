@@ -9,11 +9,14 @@ interface GlobalConfig {
   clklog_api_load_maxtime: number
   copyRight: string
   copyRightUrl: string
+  is_clklog_demo_experience_account?: boolean
+  is_clklog_demo_environment?: boolean
 }
 
 declare global {
   interface Window {
     globalConfig: GlobalConfig
+    menuListLoaded?: boolean
   }
 }
 

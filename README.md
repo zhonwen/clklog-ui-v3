@@ -12,7 +12,7 @@ ClkLog 管理端从 **Vue 2 + Element UI + Vue CLI** 升级到 **Vue 3 + TypeScr
 |------|------|
 | 第 0 步：Vite + Vue 3 + TS 脚手架 | 已完成 |
 | 第 1 步：工程骨架（代理、config、依赖） | 已完成 |
-| 第 2 步：登录 / 布局 / 权限 / 动态菜单 | 未开始 |
+| 第 2 步：登录 / 布局 / 权限 / 动态菜单 | 已完成 |
 | 第 3 步起：按模块接业务页 | 未开始 |
 
 每完成一步，把上表对应行改成「进行中 / 已完成」。
@@ -118,7 +118,7 @@ npm run build
 3. 权限守卫对齐 v2：白名单、token、移动端 `summary`、无菜单/无项目跳转。
 4. 动态路由：`componentUri === 'Layout'` 用布局组件；其它用 `import.meta.glob('@/views/**/*.vue')` 匹配。
 5. 登出重置路由：不要用 v2 的 `router.matcher`，改为记录动态路由名再 `removeRoute`。
-6. 按 v2 `views` 目录预先建占位页（路径必须对上后端 `componentUri`）。
+6. 动态菜单找不到对应 vue 时回落到占位页（`src/views/placeholder/index.vue`），避免白屏。
 
 验收：
 
@@ -126,7 +126,13 @@ npm run build
 - 侧边栏菜单与 v2 一致（数据来自同一套后端）
 - 点每个菜单能进占位页，不再 404
 - 无权限、无项目页跳转正确
-- 顶栏项目切换、TagsView 可用
+- 顶栏项目切换可用
+
+说明：
+
+- 开发代理在 `vite.config.ts` 的 `PROXY_ENV: 'demo' | 'test'` 切换。演示环境本地代理对齐 v2：`/manage`、`/authmanage`、`/ups-api`（不要加 `/api`）。`public/config.js` 仍用正式发布地址 `https://pro.clklog.com/api/...`。测试环境是 `http://10.10.220.188`。
+- 找不到对应 `componentUri` 的页面时，`loadView` 回落到 `src/views/placeholder/index.vue`，不必预先建 200+ 空文件。
+- v2 的 layout 实际没有挂载 TagsView；store 已迁，标签页 UI、filterBar、改密、下载放到第 3 步。
 
 ---
 
@@ -414,4 +420,4 @@ clklog-ui-v3/
 
 ## 下一步
 
-第 1 步已完成。下一步做 **第 2 步：登录 + 布局 + 权限 + 动态菜单**。
+第 2 步进行中：登录、布局、权限和动态菜单。菜单点开后为占位页，业务内容从第 3 步起按模块迁入。

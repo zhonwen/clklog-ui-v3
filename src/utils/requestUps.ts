@@ -1,4 +1,4 @@
-import { createBizService, showErrorOnce } from '@/utils/http'
+import { createBizService, showErrorOnce, wrapService } from '@/utils/http'
 
 const service = createBizService({
   channel: 'ups',
@@ -16,4 +16,4 @@ const service = createBizService({
   },
 })
 
-export default service
+export default wrapService(service)

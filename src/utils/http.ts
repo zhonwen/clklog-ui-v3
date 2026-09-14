@@ -1,5 +1,6 @@
 import axios, {
   type AxiosInstance,
+  type AxiosRequestConfig,
   type AxiosResponse,
   type InternalAxiosRequestConfig,
 } from 'axios'
@@ -171,4 +172,10 @@ export function createBizService(options: CreateBizServiceOptions): AxiosInstanc
   )
 
   return service
+}
+
+export function wrapService(service: AxiosInstance) {
+  return function request<T = unknown>(config: AxiosRequestConfig) {
+    return service(config) as Promise<ApiResult<T>>
+  }
 }

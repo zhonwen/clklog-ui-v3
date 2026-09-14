@@ -1,4 +1,4 @@
-import { createBizService } from '@/utils/http'
+import { createBizService, wrapService } from '@/utils/http'
 
 const service = createBizService({
   channel: 'authmanage',
@@ -7,4 +7,4 @@ const service = createBizService({
   },
 })
 
-export default service
+export default wrapService(service)

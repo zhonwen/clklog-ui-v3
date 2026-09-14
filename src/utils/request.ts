@@ -1,5 +1,5 @@
 import router from '@/router'
-import { createBizService, showErrorOnce, type ApiResult } from '@/utils/http'
+import { createBizService, showErrorOnce, wrapService, type ApiResult } from '@/utils/http'
 
 const service = createBizService({
   channel: 'api',
@@ -28,4 +28,4 @@ const service = createBizService({
 })
 
 export type { ApiResult }
-export default service
+export default wrapService(service)

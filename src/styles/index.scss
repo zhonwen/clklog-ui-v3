@@ -1,3 +1,7 @@
+@use './variables.scss' as *;
+@use './transition.scss';
+@use './sidebar.scss' as *;
+
 html,
 body,
 #app {
@@ -8,9 +12,12 @@ body,
 
 html {
   --el-color-primary: #2c7be5;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 body {
+  height: 100%;
   font-family:
     Helvetica Neue,
     Helvetica,
@@ -24,7 +31,17 @@ body {
   background: #f5f7fa;
 }
 
+#app {
+  height: 100vh;
+}
+
 a {
   color: inherit;
   text-decoration: none;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
 }

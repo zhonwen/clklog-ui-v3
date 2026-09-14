@@ -1,0 +1,86 @@
+@use './variables.scss' as *;
+
+#app {
+  .main-container {
+    min-height: calc(92% - 50px);
+    margin-left: $sideBarWidth;
+    position: relative;
+    top: 50px;
+    background-color: #eaf2fc;
+  }
+
+  .sidebar-container {
+    transition: width 0.28s;
+    width: $sideBarWidth !important;
+    background-color: $menuBg;
+    height: 92%;
+    position: fixed;
+    font-size: 0;
+    top: 50px;
+    bottom: 0;
+    left: 0;
+    z-index: 1001;
+    overflow: hidden;
+    border-right: 1px #eee solid;
+
+    .scrollbar-wrapper {
+      overflow-x: hidden !important;
+    }
+
+    .el-scrollbar {
+      height: 92%;
+    }
+
+    .el-menu {
+      border: none;
+      height: 100%;
+      width: 100% !important;
+    }
+
+    .svg-icon {
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    .el-sub-menu__title:hover,
+    .submenu-title-noDropdown:hover {
+      background: linear-gradient(to right, #d5e5fa, #fff) !important;
+    }
+
+    .el-menu-item.is-active {
+      background: linear-gradient(to right, #d5e5fa, #fff) !important;
+    }
+  }
+
+  .hideSidebar {
+    .sidebar-container {
+      width: 54px !important;
+    }
+
+    .main-container {
+      margin-left: 54px;
+    }
+  }
+
+  .mobile {
+    .main-container {
+      margin-left: 0;
+    }
+
+    &.hideSidebar {
+      .sidebar-container {
+        pointer-events: none;
+        transform: translate3d(-$sideBarWidth, 0, 0);
+      }
+    }
+  }
+}
+
+#app .fullHideSidebar {
+  .sidebar-container {
+    width: 0 !important;
+  }
+  .main-container {
+    margin-left: 0 !important;
+  }
+}
