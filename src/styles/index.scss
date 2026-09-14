@@ -1,6 +1,7 @@
 @use './variables.scss' as *;
 @use './transition.scss';
 @use './sidebar.scss' as *;
+@use './components/custom-radio.scss';
 
 html,
 body,
@@ -44,4 +45,48 @@ a {
 *::before,
 *::after {
   box-sizing: inherit;
+}
+
+.tabBarBtn {
+  display: flex;
+  position: relative;
+  margin-left: auto;
+  min-width: 150px;
+  z-index: 1000;
+}
+
+.zc_btn {
+  z-index: 99;
+  height: 30px;
+  padding: 0 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff !important;
+  font-size: 13px;
+  background-color: #2c7be5 !important;
+}
+
+.zc_btn_default {
+  z-index: 99;
+  height: 30px;
+  padding: 0 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 13px;
+  color: #2c7be5;
+  border: 1px solid #2c7be5;
+}
+
+.public_border_color {
+  border: 1px solid #d8e2ef;
+}
+
+.public_font_color {
+  color: #194580 !important;
+}
+
+.filterbar-tab-right {
+  margin-right: 12px;
 }

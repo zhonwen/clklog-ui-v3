@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { Hide, View } from '@element-plus/icons-vue'
 import Cookies from 'js-cookie'
@@ -12,7 +13,8 @@ import { useAppStore } from '@/stores/app'
 import { usePermissionStore } from '@/stores/permission'
 import { useTrackingStore } from '@/stores/tracking'
 import { useUserStore } from '@/stores/user'
-import { getFirstRoutePath, getPermissionRedirectPath } from '@/utils/menu'
+import { pickEntryPath } from '@/utils/menu'
+import { isNavigationFailure } from 'vue-router'
 import { useResizeHandler } from '@/layout/mixin/ResizeHandler'
 
 useResizeHandler()
@@ -34,6 +36,8 @@ const passwordType = ref<'password' | 'text'>('password')
 const capsTooltip = ref(false)
 const loginBgSrc = './image/loginBg.png'
 const logoSrc = './image/logo.png'
+const showLoginBg = ref(true)
+const showLogo = ref(true)
 const isDemoAccount = window.globalConfig.is_clklog_demo_experience_account || false
 const device = computed(() => appStore.device)
 
@@ -125,10 +129,20 @@ async function handleLogin() {
     const menuListData = response2.data || []
     userStore.setMenuList(menuListData)
     await permissionStore.generateAsyncRoutes(menuListData)
-    const defaultPath =
-      redirect.value || getFirstRoutePath(menuListData) || getPermissionRedirectPath(menuListData)
-    await router.push({ path: defaultPath || '/' })
-  } catch {
+    const defaultPath = pickEntryPath(
+      menuListData,
+      redirect.value,
+      permissionStore.uriRoutes,
+    )
+    try {
+      await router.replace({ path: defaultPath || '/' })
+    } catch (error) {
+      if (!isNavigationFailure(error)) throw error
+      await router.replace({ path: '/NoPermission' }).catch(() => undefined)
+    }
+  } catch (error) {
+    console.error(error)
+    ElMessage.error(error instanceof Error ? error.message : '登录后进入系统失败')
     getCaptcha()
   } finally {
     loading.value = false
@@ -153,7 +167,13 @@ onMounted(() => {
 <template>
   <div class="login-container" :class="{ mobile: device !== 'desktop' }">
     <div v-if="device == 'desktop'" class="login-banner">
-      <img :src="loginBgSrc" alt="" class="banner-img" />
+      <img
+        v-if="showLoginBg"
+        :src="loginBgSrc"
+        alt=""
+        class="banner-img"
+        @error="showLoginBg = false"
+      />
     </div>
     <div class="login-panel">
       <el-form
@@ -166,7 +186,13 @@ onMounted(() => {
         @keyup.enter="handleLogin"
       >
         <div class="title-container">
-          <img class="logo_head" :src="logoSrc" alt="ClkLog" />
+          <img
+            v-if="showLogo"
+            class="logo_head"
+            :src="logoSrc"
+            alt="ClkLog"
+            @error="showLogo = false"
+          />
         </div>
         <div class="field-label">账号</div>
         <el-form-item prop="username">

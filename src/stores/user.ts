@@ -25,8 +25,13 @@ export const useUserStore = defineStore('user', {
     channelList: [] as ChannelItem[],
   }),
   actions: {
-    login(response: { data?: { token?: string } }) {
-      const token = response.data?.token || ''
+    login(response: { data?: { token?: string } | string; token?: string }) {
+      const data = response.data
+      const token =
+        (typeof data === 'object' && data?.token) ||
+        (typeof data === 'string' ? data : '') ||
+        response.token ||
+        ''
       this.token = token
       setToken(token)
     },

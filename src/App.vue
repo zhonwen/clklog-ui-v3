@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { RouterView } from 'vue-router'
+import ModifyPsw from '@/components/ModifyPsw/index.vue'
 
 onMounted(() => {
   const link = document.createElement('link')
@@ -12,6 +13,7 @@ onMounted(() => {
 
 <template>
   <RouterView />
+  <ModifyPsw />
 </template>
 
 <style lang="scss">

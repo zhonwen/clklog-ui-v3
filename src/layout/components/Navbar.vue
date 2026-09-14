@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowDown } from '@element-plus/icons-vue'
 import Cookies from 'js-cookie'
 import { getMenuList } from '@/api/user'
+import { getChannelListApi } from '@/api/trackingapi/channel'
+import { bus } from '@/utils/event-bus'
 import { useAppStore } from '@/stores/app'
 import { usePermissionStore } from '@/stores/permission'
 import { useTrackingStore } from '@/stores/tracking'
@@ -82,6 +84,20 @@ async function handleChangeProject(val: string, isInit = false) {
   } catch {
     setLocalStorage('projectSwitching', 0)
   }
+  channelTypeList(val)
+}
+
+function channelTypeList(projectName: string) {
+  if (!projectName) return
+  void getChannelListApi({ projectName }).then((res) => {
+    if (res.code == 200) {
+      userStore.setChannelList(res.data || [])
+    }
+  })
+}
+
+function modifyPsw() {
+  bus.emit('$modifyPsw')
 }
 
 async function logout() {
@@ -139,7 +155,11 @@ watch(
 
 onMounted(() => {
   const projectList = getLocalStorage('projectList')
-  if (!projectList || !Array.isArray(projectList)) {
+  const storeProjects = trackingStore.projectArray
+  if (
+    (!projectList || !Array.isArray(projectList) || projectList.length === 0) &&
+    (!Array.isArray(storeProjects) || storeProjects.length === 0)
+  ) {
     void userStore.logout().then(() => router.push({ path: '/login' }))
     return
   }
@@ -155,6 +175,7 @@ onMounted(() => {
       (typeof savedProjectCode === 'string' && savedProjectCode) || options.value[0]?.projectName || ''
   }
   trackingStore.setProject(prejectCode.value)
+  channelTypeList(prejectCode.value)
   if (localStorage.getItem('prejectCode') && !window.menuListLoaded) {
     window.menuListLoaded = true
     getMenuList({ projectName: prejectCode.value }).then((res) => {
@@ -211,7 +232,7 @@ onUnmounted(() => {
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item>{{ userName }}</el-dropdown-item>
-              <el-dropdown-item v-if="!isDemoEnv" disabled>修改密码</el-dropdown-item>
+              <el-dropdown-item v-if="!isDemoEnv" @click="modifyPsw">修改密码</el-dropdown-item>
               <el-dropdown-item @click="logout">退出</el-dropdown-item>
             </el-dropdown-menu>
           </template>

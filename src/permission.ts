@@ -3,7 +3,7 @@ import { ElMessage } from 'element-plus'
 import router from '@/router'
 import { getToken } from '@/utils/auth'
 import getPageTitle from '@/utils/get-page-title'
-import { hasVisibleMenu } from '@/utils/menu'
+import { hasVisibleMenu, isAllowedPath, pickEntryPath, pickFirstUriPath } from '@/utils/menu'
 import { usePermissionStore } from '@/stores/permission'
 import { useTrackingStore } from '@/stores/tracking'
 import { useUserStore } from '@/stores/user'
@@ -48,19 +48,13 @@ router.beforeEach(async (to, _from, next) => {
 
   if (hasToken) {
     if (to.path === '/login') {
-      const permissionUriRoles = permissionStore.uriRoutes
-      if (!permissionUriRoles) {
-        next({ path: '/' })
-        NProgress.done()
-        return
-      }
-      if (permissionUriRoles[1] && permissionUriRoles[1].indexOf(permissionUriRoles[0] || '') !== -1) {
-        next({ path: permissionUriRoles[1] })
-        NProgress.done()
-        return
-      }
-      next({ path: permissionUriRoles[0] || '/' })
+      const entry =
+        pickEntryPath(userStore.menuList, undefined, permissionStore.uriRoutes) ||
+        pickFirstUriPath(permissionStore.uriRoutes) ||
+        '/'
+      next({ path: entry })
       NProgress.done()
+      return
     } else {
       const permissionRoles = permissionStore.routes && permissionStore.routes.length > 0
       const permissionUriRoles = permissionStore.uriRoutes
@@ -80,11 +74,12 @@ router.beforeEach(async (to, _from, next) => {
           next()
           return
         }
-        if (permissionUriRoles.indexOf(to.path) === -1) {
+        if (!isAllowedPath(permissionUriRoles, to.path)) {
           const switching = localStorage.getItem('projectSwitching') == '1'
           const canDefault = Array.isArray(permissionUriRoles) && permissionUriRoles.length > 0
-          if ((to.path === '/' && canDefault) || (switching && canDefault)) {
-            next({ path: permissionUriRoles[0] })
+          if ((to.path === '/' && canDefault) || (to.path === '/index' && canDefault) || (switching && canDefault)) {
+            const fallback = pickFirstUriPath(permissionUriRoles) || permissionUriRoles[0]
+            next({ path: fallback || '/NoPermission' })
             NProgress.done()
             return
           }
@@ -124,11 +119,12 @@ router.beforeEach(async (to, _from, next) => {
             next()
             return
           }
-          if (uriRoutes.indexOf(to.path) === -1) {
+          if (!isAllowedPath(uriRoutes, to.path)) {
             const switching = localStorage.getItem('projectSwitching') == '1'
             const canDefault = Array.isArray(uriRoutes) && uriRoutes.length > 0
-            if ((to.path === '/' && canDefault) || (switching && canDefault)) {
-              next({ path: uriRoutes[0] })
+            if ((to.path === '/' && canDefault) || (to.path === '/index' && canDefault) || (switching && canDefault)) {
+              const fallback = pickFirstUriPath(uriRoutes) || uriRoutes[0]
+              next({ path: fallback || '/NoPermission' })
               NProgress.done()
               return
             }

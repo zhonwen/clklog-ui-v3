@@ -7,9 +7,9 @@ export function getToken() {
 }
 
 export function setToken(token: string) {
-  return Cookies.set(TokenKey, token)
+  return Cookies.set(TokenKey, token, { path: '/' })
 }
 
 export function removeToken() {
-  return Cookies.remove(TokenKey)
+  return Cookies.remove(TokenKey, { path: '/' })
 }

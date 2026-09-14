@@ -13,7 +13,8 @@ ClkLog 管理端从 **Vue 2 + Element UI + Vue CLI** 升级到 **Vue 3 + TypeScr
 | 第 0 步：Vite + Vue 3 + TS 脚手架 | 已完成 |
 | 第 1 步：工程骨架（代理、config、依赖） | 已完成 |
 | 第 2 步：登录 / 布局 / 权限 / 动态菜单 | 已完成 |
-| 第 3 步起：按模块接业务页 | 未开始 |
+| 第 3 步：公共能力（筛选条 / 指令 / 图标） | 已完成 |
+| 第 4 步起：按模块接业务页 | 未开始 |
 
 每完成一步，把上表对应行改成「进行中 / 已完成」。
 
@@ -157,6 +158,15 @@ npm run build
 | ECharts 封装 | 各页直接 `import echarts` | 统一 init / dispose / resize；地图用自有 GeoJSON |
 
 验收：登录后布局里筛选条能选项目/时间；指令、图标在占位页可点验证。
+
+已落地：
+
+- `FilterBar`（`src/layout/components/filterBar`），占位页已挂上可改时间/渠道/访客
+- 过滤器在 `src/utils/filters.ts`；`$bus` 用 `mitt`（`src/utils/event-bus.ts`）
+- 指令：`v-permission`、`v-loadmore`、`v-clipboard`、`v-sticky`、`v-el-drag-dialog`、`v-el-height-adaptive-table`
+- `$fixedWidth` / `$sharedText` / `$htmlToPdf` 挂在 `app.config.globalProperties`
+- 图表统一用 `src/composables/useChart.ts`（ECharts 6，地图仍待第 6 步）
+- 顶栏可改密；切换项目会拉渠道列表
 
 ---
 
