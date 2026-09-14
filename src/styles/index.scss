@@ -1,0 +1,30 @@
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+html {
+  --el-color-primary: #2c7be5;
+}
+
+body {
+  font-family:
+    Helvetica Neue,
+    Helvetica,
+    PingFang SC,
+    Hiragino Sans GB,
+    Microsoft YaHei,
+    Arial,
+    sans-serif;
+  font-size: $font-size-medium;
+  color: $black;
+  background: #f5f7fa;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
