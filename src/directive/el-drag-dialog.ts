@@ -20,8 +20,8 @@ export const elDragDialog: Directive<HTMLElement> = {
       const minDragDomTop = dragDom.offsetTop
       const maxDragDomTop = screenHeight - dragDom.offsetTop - dragDomHeight
 
-      let styL = Number.parseInt(getComputedStyle(dragDom).left || '0', 10) || 0
-      let styT = Number.parseInt(getComputedStyle(dragDom).top || '0', 10) || 0
+      const styL = Number.parseInt(getComputedStyle(dragDom).left || '0', 10) || 0
+      const styT = Number.parseInt(getComputedStyle(dragDom).top || '0', 10) || 0
 
       document.onmousemove = function (ev) {
         let left = ev.clientX - disX

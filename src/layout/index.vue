@@ -37,10 +37,10 @@ function openClklog() {
       class="drawer-bg"
       @click="handleClickOutside"
     />
-    <sidebar class="sidebar-container" />
+    <Sidebar class="sidebar-container" />
     <div class="main-container">
-      <navbar />
-      <app-main />
+      <Navbar />
+      <AppMain />
     </div>
     <div v-if="device != 'mobile'" class="logoConItem">
       <div class="logoName">POWERED BY</div>

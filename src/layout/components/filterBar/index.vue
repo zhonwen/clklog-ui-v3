@@ -160,7 +160,6 @@ const pickerBeginOption = {
     },
   ],
 }
-const pickerBeginOptionTwo = { disabledDate }
 
 const allChaneList = computed(() => userStore.channelList)
 const channel = computed(() => (channelValue.value ? [channelValue.value] : []))

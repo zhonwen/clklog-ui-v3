@@ -10,9 +10,9 @@ export function formatDate(date: Date) {
 
 export function formatTime(seconds: number) {
   if (!seconds) return '--'
-  let hours = Math.floor(seconds / 3600)
-  let minutes = Math.floor((seconds - hours * 3600) / 60)
-  let rest = seconds - hours * 3600 - minutes * 60
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds - hours * 3600) / 60)
+  const rest = seconds - hours * 3600 - minutes * 60
   const pad = (n: number) => (n < 10 ? `0${n}` : String(n))
   return `${pad(hours)}:${pad(minutes)}:${pad(rest)}`
 }
