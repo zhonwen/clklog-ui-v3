@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowDown } from '@element-plus/icons-vue'
 import Cookies from 'js-cookie'
@@ -11,6 +11,7 @@ import { usePermissionStore } from '@/stores/permission'
 import { useTrackingStore } from '@/stores/tracking'
 import { useUserStore } from '@/stores/user'
 import { getLocalStorage, setLocalStorage } from '@/utils/localStorage'
+import { setProjectSwitching } from '@/utils/project-switching'
 import { getFirstRoutePath } from '@/utils/menu'
 import { hideSidebarPathNames } from '@/utils/index'
 import type { ProjectItem } from '@/types/app'
@@ -65,7 +66,7 @@ async function handleChangeProject(val: string, isInit = false) {
   trackingStore.setProject(val)
   setLocalStorage('prejectCode', val)
   if (!isInit) {
-    setLocalStorage('projectSwitching', 1)
+    setProjectSwitching(true)
   }
   window.menuListLoaded = false
   try {
@@ -79,10 +80,10 @@ async function handleChangeProject(val: string, isInit = false) {
         const defaultPath = getFirstRoutePath(res.data || []) || '/NoPermission'
         await router.replace({ path: defaultPath })
       }
-      setTimeout(() => setLocalStorage('projectSwitching', 0), 1000)
+      setTimeout(() => setProjectSwitching(false), 1000)
     }
   } catch {
-    setLocalStorage('projectSwitching', 0)
+    setProjectSwitching(false)
   }
   channelTypeList(val)
 }

@@ -70,18 +70,16 @@ export function handleForbidden() {
 }
 
 export function handleTokenExpired() {
-  ElMessageBox.confirm(
-    'You have been logged out, you can cancel to stay on this page, or log in again',
-    'Confirm logout',
-    {
-      confirmButtonText: 'Re-Login',
-      cancelButtonText: 'Cancel',
-      type: 'warning',
-    },
-  ).then(() => {
-    useUserStore().resetToken()
-    location.reload()
+  ElMessageBox.confirm('登录状态已失效，可以取消继续留在本页，或重新登录。', '重新登录', {
+    confirmButtonText: '重新登录',
+    cancelButtonText: '取消',
+    type: 'warning',
   })
+    .then(() => {
+      useUserStore().resetToken()
+      location.reload()
+    })
+    .catch(() => undefined)
 }
 
 export function attachAuth(
@@ -102,15 +100,17 @@ export function applyDevProdPrefix(
   config: InternalAxiosRequestConfig,
   channel: ApiChannel,
 ) {
-  const method = (config.method || 'get').toLowerCase()
   const url = config.url || ''
-  const isMock = url.includes('/vue-element-admin/user')
-  if ((method === 'post' || method === 'put') && !isMock) {
-    if (!config.headers.get('Content-Type')) {
-      config.headers.set('Content-Type', 'application/json;')
-    }
-    config.url = prefixApiUrl(channel, url)
+  // mock 地址直通，不加任何前缀
+  if (url.includes('/vue-element-admin/user')) return config
+
+  const method = (config.method || 'get').toLowerCase()
+  if ((method === 'post' || method === 'put') && !config.headers.get('Content-Type')) {
+    config.headers.set('Content-Type', 'application/json;')
   }
+  // 前缀与 method 解耦：v2 的 request.js 对 get 也加前缀，
+  // 之前只处理 post/put，新增的 GET 接口会直接打到前端域名上。
+  config.url = prefixApiUrl(channel, url)
   return config
 }
 
@@ -137,31 +137,42 @@ export function createBizService(options: CreateBizServiceOptions): AxiosInstanc
     (error) => Promise.reject(error),
   )
 
-  service.interceptors.response.use(
-    async (response: AxiosResponse<ApiResult>): Promise<any> => {
-      const res = response.data
-      if (res.code == 403) {
-        handleForbidden()
-        return
-      }
-      if (res.code !== 200) {
-        const url = response.config.url || ''
-        const handled = await options.onBizError?.(res, url)
-        if (handled === true) return
-        if (handled && handled !== false) return handled
-
-        if (res.code == 423) {
-          return router.replace('/PermissionDenied')
-        }
-
-        showErrorOnce(res.message || res.msg || 'Error')
-        if (res.code === 50008 || res.code === 50012 || res.code === 50014) {
-          handleTokenExpired()
-        }
-        return Promise.reject(new Error(res.message || res.msg || 'Error'))
-      }
+  /**
+   * 所有「已处理」的分支都回传一个 ApiResult，而不是 undefined 或 router.replace() 的 Promise。
+   * 否则 wrapService 声明的返回类型就是假的，调用方 `res.code` 会在 403 / 423 时抛
+   * Cannot read properties of undefined。调用方按 `res.code === 200` 判断，
+   * 拿到非 200 的结果自然会跳过后续逻辑。
+   */
+  async function onResponse(response: AxiosResponse<ApiResult>): Promise<ApiResult> {
+    const res = response.data
+    if (res.code == 403) {
+      handleForbidden()
       return res
-    },
+    }
+    if (res.code !== 200) {
+      const url = response.config.url || ''
+      const handled = await options.onBizError?.(res, url)
+      if (handled === true) return res
+      if (handled && handled !== false) return handled as ApiResult
+
+      if (res.code == 423) {
+        void router.replace('/PermissionDenied')
+        return res
+      }
+
+      showErrorOnce(res.message || res.msg || 'Error')
+      if (res.code === 50008 || res.code === 50012 || res.code === 50014) {
+        handleTokenExpired()
+      }
+      return Promise.reject(new Error(res.message || res.msg || 'Error'))
+    }
+    return res
+  }
+
+  service.interceptors.response.use(
+    // axios 的拦截器签名要求回传 AxiosResponse，而这里刻意只回传 response.data，
+    // 整个项目唯一一处需要跨这个边界的类型转换就收在这一行。
+    onResponse as unknown as (response: AxiosResponse) => Promise<AxiosResponse>,
     (error) => {
       if (options.onHttpError?.(error)) {
         return Promise.reject(error)
@@ -176,6 +187,7 @@ export function createBizService(options: CreateBizServiceOptions): AxiosInstanc
 
 export function wrapService(service: AxiosInstance) {
   return function request<T = unknown>(config: AxiosRequestConfig) {
-    return service(config) as Promise<ApiResult<T>>
+    // 响应拦截器已经把 AxiosResponse 换成了 ApiResult，这里只是把类型对上
+    return service(config) as unknown as Promise<ApiResult<T>>
   }
 }

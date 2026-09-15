@@ -13,7 +13,7 @@ import {
   getMondayOfPreviousWeeks,
   timeStampFunc,
   todateFunc,
-} from '@/utils/filters'
+} from '@/utils/date'
 import {
   exportUserList,
   exportVisitorApi,
@@ -492,12 +492,39 @@ function handleCheckProvince(item: ProvinceItem) {
   })
 }
 
-function sliceTypeFile(res: { headers?: unknown }) {
+/**
+ * 从 content-disposition 里取文件名。
+ *
+ * 之前用 indexOf('filename=') + substring/slice：没有 filename 时 indexOf 返回 -1，
+ * substring(-1) 等于整串，会把整个响应头当成文件名；而且双重 decode 遇到文件名里
+ * 带 % 会直接抛异常，也不支持中文常用的 filename*=UTF-8'' 写法。
+ */
+function sliceTypeFile(res: { headers?: unknown }, fallback = 'export') {
   const headers = res.headers as { get?: (k: string) => unknown; [k: string]: unknown } | undefined
   const raw = headers?.['content-disposition'] || headers?.get?.('content-disposition') || ''
-  const fileName = String(raw)
-  const index1 = fileName.indexOf('filename=')
-  return decodeURIComponent(decodeURI(fileName.substring(index1).slice(9)))
+  const disposition = String(raw)
+
+  const star = /filename\*=(?:UTF-8'')?([^;]+)/i.exec(disposition)
+  if (star?.[1]) {
+    const value = star[1].trim().replace(/^"|"$/g, '')
+    try {
+      return decodeURIComponent(value)
+    } catch {
+      return value
+    }
+  }
+
+  const plain = /filename="?([^";]+)"?/i.exec(disposition)
+  if (plain?.[1]) {
+    const value = plain[1].trim()
+    try {
+      return decodeURIComponent(value)
+    } catch {
+      return value
+    }
+  }
+
+  return fallback
 }
 
 function download() {

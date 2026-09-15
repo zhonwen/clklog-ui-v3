@@ -3,8 +3,7 @@ import { hideSidebarPathNames } from '@/utils/index'
 import { shouldHideSidebarByMeta } from '@/utils/route-meta'
 import { useAppStore } from '@/stores/app'
 import type { AppRouteRecordRaw } from '@/stores/permission'
-
-const Layout = () => import('@/layout/index.vue')
+import { Layout } from '@/router/layout'
 
 export const constantRoutes: AppRouteRecordRaw[] = [
   {

@@ -61,7 +61,10 @@ function findVisibleTitleByPath(routes: RouteLike[], path: string, parentPath = 
 /** 标题、侧边栏只认非 hidden 的 matched；隐藏菜单（如「默认权限（勿删）」）不参与。 */
 export function getVisibleRouteTitle(to: RouteLocationNormalized, routes: RouteLike[] = []) {
   for (let i = to.matched.length - 1; i >= 0; i--) {
-    const meta = to.matched[i].meta
+    // noUncheckedIndexedAccess 下数组下标结果可能为 undefined，先落成变量再判空
+    const record = to.matched[i]
+    if (!record) continue
+    const meta = record.meta
     if (isHiddenMeta(meta)) continue
     if (meta?.title) return String(meta.title)
   }

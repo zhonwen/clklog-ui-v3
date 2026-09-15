@@ -26,33 +26,39 @@ service.interceptors.request.use(
   (error) => Promise.reject(error),
 )
 
-let isLoggingOut = false
+/** responseType 是 blob 时，业务错误也会被包成 blob，需要读出来判断 */
+async function readBlobError(data: unknown) {
+  if (!(data instanceof Blob) || !data.type.includes('json')) return null
+  try {
+    return JSON.parse(await data.text()) as { code?: number; message?: string; msg?: string }
+  } catch {
+    return null
+  }
+}
 
 service.interceptors.response.use(
-  (res): any => {
-    if (res.status != 200) {
-      if (res.status == 403) {
-        if (!isLoggingOut) {
-          isLoggingOut = true
-          handleForbidden()
-          setTimeout(() => {
-            isLoggingOut = false
-          }, 400)
-        }
-        return
+  async (res) => {
+    // 注意：axios 默认只有 2xx 进这里，非 2xx 一律走下面的 error 回调。
+    // v2 里写在这里的 `res.status != 200` 分支实际永远走不到，已移到 error 回调。
+    const bizError = await readBlobError(res.data)
+    if (bizError) {
+      if (bizError.code === 403) {
+        handleForbidden()
+        return Promise.reject(new Error('无权限'))
       }
-      ElMessage({
-        message: res.statusText || 'Error',
-        type: 'error',
-        duration: 5 * 1000,
-      })
-      return Promise.reject(new Error(res.statusText || 'Error'))
+      const message = bizError.message || bizError.msg || '导出失败'
+      ElMessage({ message, type: 'error', duration: 5 * 1000 })
+      return Promise.reject(new Error(message))
     }
     return res
   },
   (error) => {
+    if (error?.response?.status === 403) {
+      handleForbidden()
+      return Promise.reject(error)
+    }
     ElMessage({
-      message: error.statusText || error.message || error.msg || 'Error',
+      message: error?.response?.statusText || error?.message || '导出失败',
       type: 'error',
       duration: 5 * 1000,
     })

@@ -1,14 +1,7 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import { RouterView } from 'vue-router'
 import ModifyPsw from '@/components/ModifyPsw/index.vue'
-
-onMounted(() => {
-  const link = document.createElement('link')
-  link.rel = 'icon'
-  link.href = './image/icon.png'
-  document.head.appendChild(link)
-})
+// favicon 由 index.html 的 <link rel="icon"> 指定，不再在运行时重复插入
 </script>
 
 <template>

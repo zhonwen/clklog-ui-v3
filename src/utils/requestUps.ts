@@ -1,4 +1,5 @@
 import { createBizService, showErrorOnce, wrapService } from '@/utils/http'
+import { isProjectSwitching } from '@/utils/project-switching'
 
 const service = createBizService({
   channel: 'ups',
@@ -12,7 +13,7 @@ const service = createBizService({
     return false
   },
   onHttpError() {
-    return localStorage.getItem('projectSwitching') == '1'
+    return isProjectSwitching()
   },
 })
 

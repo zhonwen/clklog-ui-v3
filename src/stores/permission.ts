@@ -1,6 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router'
 import { defineStore } from 'pinia'
 import router, { constantRoutes, markDynamicRoutes, resetRouter } from '@/router'
+import { Layout } from '@/router/layout'
 import type { MenuItem } from '@/types/app'
 import { EXTRA_URI_PATHS } from '@/utils/menu'
 import { loadView } from '@/utils/load-view'
@@ -56,21 +57,6 @@ function getFirstChildFullPath(item: MenuItem) {
     fullPath = resolveRoutePath(fullPath, node.path)
   }
   return isVisible(node) && !isExternal(fullPath) ? fullPath : null
-}
-
-function findFirstVisibleLeaf(menuList: MenuItem[]) {
-  if (!Array.isArray(menuList) || menuList.length === 0) return null
-  const top = menuList.find((x) => isVisible(x))
-  if (!top) return null
-  if (top.componentUri !== 'Layout') return top
-  let node = getFirstVisibleChild(top)
-  if (!node) return null
-  while (node && Array.isArray(node.children) && node.children.length > 0) {
-    const next = getFirstVisibleChild(node)
-    if (!next) break
-    node = next
-  }
-  return node
 }
 
 function collectRouteNames(routes: AppRouteRecordRaw[], into: Set<string>) {
@@ -132,7 +118,7 @@ function convertToRoutes(
         alwaysShow: false,
         path: routePath,
         name: item.component || `layout-${item.path}`,
-        component: () => import('@/layout/index.vue'),
+        component: Layout,
         meta: buildMeta(item, hidden, hideSidebar),
         hidden,
       }
@@ -175,7 +161,7 @@ function convertToRoutes(
         alwaysShow: false,
         path: newPath,
         name: item.component ? `layout-${item.component}` : `layout-${newPath}`,
-        component: () => import('@/layout/index.vue'),
+        component: Layout,
         meta: buildMeta(item, hidden, false),
         hidden,
         children: [viewRoute],
@@ -252,7 +238,6 @@ export const usePermissionStore = defineStore('permission', {
       const usedNames = new Set<string>()
       collectRouteNames(constantRoutes as AppRouteRecordRaw[], usedNames)
       uniquifyRouteNames(accessedRoutes, usedNames)
-      findFirstVisibleLeaf(rawMenuList)
       const uriRoutes = convertToUriRoutes(rawMenuList).concat(EXTRA_URI_PATHS)
       this.uriRoutes = uriRoutes
       localStorage.setItem('uriRoutes', JSON.stringify(uriRoutes))

@@ -1,44 +1,10 @@
 /// <reference types="vite/client" />
 
-interface GlobalConfig {
-  BASE_API: string
-  BASE_API_MANAGE: string
-  BASE_API_AUTHMANAGE: string
-  BASE_API_UPSAPI: string
-  clklog_api_timeout: number
-  clklog_api_load_maxtime: number
-  copyRight: string
-  copyRightUrl: string
-  is_clklog_demo_experience_account?: boolean
-  is_clklog_demo_environment?: boolean
-}
+import type { fixedWidth } from '@/components/el-table-width'
+import type { sharedText } from '@/components/pointFont'
+import type { htmlToPdf } from '@/utils/htmlToPdf'
 
-declare global {
-  interface Window {
-    globalConfig: GlobalConfig
-    menuListLoaded?: boolean
-  }
-}
-
-declare module 'vue' {
-  interface ComponentCustomProperties {
-    $fixedWidth: {
-      FwMulti: string
-      FwIndex: string
-      FwValue: string
-      FwDate: string
-      FwEventName: string
-      FwTime: string
-      FwDisplayName: string
-      FwOperation: string
-    }
-    $sharedText: Record<string, string>
-    $htmlToPdf: (elementId: string, htmlTitle: string) => Promise<boolean>
-  }
-}
-
-export {}
-
+/** public/config.js 注入的运行时配置，字段与 v2 保持一致 */
 interface GlobalConfig {
   BASE_API: string
   BASE_API_MANAGE: string

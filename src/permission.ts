@@ -8,6 +8,7 @@ import { hasVisibleMenu, isAllowedPath, pickEntryPath, pickFirstUriPath } from '
 import { usePermissionStore } from '@/stores/permission'
 import { useTrackingStore } from '@/stores/tracking'
 import { useUserStore } from '@/stores/user'
+import { isProjectSwitching } from '@/utils/project-switching'
 
 NProgress.configure({ showSpinner: false })
 
@@ -76,7 +77,7 @@ router.beforeEach(async (to, _from, next) => {
           return
         }
         if (!isAllowedPath(permissionUriRoles, to.path)) {
-          const switching = localStorage.getItem('projectSwitching') == '1'
+          const switching = isProjectSwitching()
           const canDefault = Array.isArray(permissionUriRoles) && permissionUriRoles.length > 0
           if ((to.path === '/' && canDefault) || (to.path === '/index' && canDefault) || (switching && canDefault)) {
             const fallback = pickFirstUriPath(permissionUriRoles) || permissionUriRoles[0]
@@ -121,7 +122,7 @@ router.beforeEach(async (to, _from, next) => {
             return
           }
           if (!isAllowedPath(uriRoutes, to.path)) {
-            const switching = localStorage.getItem('projectSwitching') == '1'
+            const switching = isProjectSwitching()
             const canDefault = Array.isArray(uriRoutes) && uriRoutes.length > 0
             if ((to.path === '/' && canDefault) || (to.path === '/index' && canDefault) || (switching && canDefault)) {
               const fallback = pickFirstUriPath(uriRoutes) || uriRoutes[0]
