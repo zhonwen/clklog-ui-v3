@@ -67,4 +67,16 @@ declare module 'vue' {
   }
 }
 
+declare module 'vue-router' {
+  interface RouteMeta {
+    title?: string
+    icon?: string
+    hidden?: boolean
+    hideSidebar?: boolean
+    activeMenu?: string
+    noCache?: boolean
+    affix?: boolean
+  }
+}
+
 export {}

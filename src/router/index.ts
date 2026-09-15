@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 import { hideSidebarPathNames } from '@/utils/index'
+import { shouldHideSidebarByMeta } from '@/utils/route-meta'
 import { useAppStore } from '@/stores/app'
 import type { AppRouteRecordRaw } from '@/stores/permission'
 
@@ -98,7 +99,7 @@ export function markDynamicRoutes(names: string[]) {
 
 router.beforeEach((to, _from, next) => {
   const appStore = useAppStore()
-  const hideByMeta = to.matched.some((r) => r.meta && r.meta.hideSidebar === true)
+  const hideByMeta = shouldHideSidebarByMeta(to)
   const hideByPath = hideSidebarPathNames.includes(String(to.name || ''))
   const shouldOpen = !(hideByMeta || hideByPath)
   if (appStore.sidebarIconFull !== shouldOpen) {

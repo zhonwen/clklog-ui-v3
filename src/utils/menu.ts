@@ -2,7 +2,11 @@ import type { MenuItem } from '@/types/app'
 import { resolveRoutePath } from '@/utils/path'
 import { isExternal } from '@/utils/validate'
 
-const isVisible = (m?: MenuItem) => m && m.hidden !== true
+function isHiddenFlag(val: unknown) {
+  return val === true || val === 'true' || val === 1 || val === '1'
+}
+
+const isVisible = (m?: MenuItem) => !!m && !isHiddenFlag(m.hidden)
 const isInternal = (path?: string) => !!path && !isExternal(path)
 
 export const EXTRA_URI_PATHS = [
@@ -20,7 +24,7 @@ export function hasVisibleMenu(menuList: MenuItem[]) {
   const stack = [...menuList]
   while (stack.length) {
     const item = stack.pop()
-    if (item && item.hidden !== true && item.componentUri !== 'Layout' && isInternal(item.path)) {
+    if (item && !isHiddenFlag(item.hidden) && item.componentUri !== 'Layout' && isInternal(item.path)) {
       return true
     }
     if (item && Array.isArray(item.children) && item.children.length > 0) {

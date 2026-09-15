@@ -6,6 +6,11 @@ import { isExternal } from '@/utils/validate'
 import { resolveRoutePath } from '@/utils/path'
 import type { AppRouteRecordRaw } from '@/stores/permission'
 
+function isHiddenItem(item?: AppRouteRecordRaw) {
+  const flag = item?.hidden as unknown
+  return flag === true || flag === 'true' || flag === 1 || flag === '1' || item?.meta?.hidden === true
+}
+
 const props = defineProps<{
   item: AppRouteRecordRaw
   isNest?: boolean
@@ -16,7 +21,7 @@ const onlyOneChild = ref<AppRouteRecordRaw | null>(null)
 
 function hasOneShowingChild(children: AppRouteRecordRaw[] = [], parent: AppRouteRecordRaw) {
   const showingChildren = children.filter((item) => {
-    if (item.hidden) return false
+    if (isHiddenItem(item)) return false
     onlyOneChild.value = item
     return true
   })
@@ -42,7 +47,7 @@ const showSingle = computed(() =>
 </script>
 
 <template>
-  <div v-if="!item.hidden">
+  <div v-if="!isHiddenItem(item)">
     <template v-if="showSingle">
       <app-link v-if="onlyOneChild?.meta" :to="resolvePath(onlyOneChild.path)">
         <el-menu-item

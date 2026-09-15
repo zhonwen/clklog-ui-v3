@@ -3,6 +3,7 @@ import { ElMessage } from 'element-plus'
 import router from '@/router'
 import { getToken } from '@/utils/auth'
 import getPageTitle from '@/utils/get-page-title'
+import { getVisibleRouteTitle } from '@/utils/route-meta'
 import { hasVisibleMenu, isAllowedPath, pickEntryPath, pickFirstUriPath } from '@/utils/menu'
 import { usePermissionStore } from '@/stores/permission'
 import { useTrackingStore } from '@/stores/tracking'
@@ -28,7 +29,8 @@ router.beforeEach(async (to, _from, next) => {
   if (to.path != '/mete/customAnalysis' && to.path != '/mete/funnelAnalysis') {
     NProgress.start()
   }
-  document.title = getPageTitle(to.meta.title as string | undefined)
+  const permissionStore = usePermissionStore()
+  document.title = getPageTitle(getVisibleRouteTitle(to, permissionStore.routes))
 
   if (
     to.path === '/Unauthorized' ||
@@ -42,7 +44,6 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   const userStore = useUserStore()
-  const permissionStore = usePermissionStore()
   const trackingStore = useTrackingStore()
   const hasToken = getToken()
 

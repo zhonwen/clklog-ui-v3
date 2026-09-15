@@ -5,6 +5,7 @@ import SidebarItem from './SidebarItem.vue'
 import { useAppStore } from '@/stores/app'
 import { usePermissionStore } from '@/stores/permission'
 import { useSettingsStore } from '@/stores/settings'
+import { visibleSidebarRoutes } from '@/utils/route-meta'
 
 const route = useRoute()
 const appStore = useAppStore()
@@ -12,7 +13,7 @@ const permissionStore = usePermissionStore()
 const settingsStore = useSettingsStore()
 const defaultOpen = ref<string[]>([])
 
-const permissionRoutes = computed(() => permissionStore.routes)
+const permissionRoutes = computed(() => visibleSidebarRoutes(permissionStore.addRoutes))
 const sidebar = computed(() => appStore.sidebar)
 const showLogo = computed(() => settingsStore.sidebarLogo)
 const isCollapse = computed(() => !sidebar.value.opened)

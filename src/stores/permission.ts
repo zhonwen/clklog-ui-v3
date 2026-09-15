@@ -27,8 +27,12 @@ function isHttpOrHttps(url: string) {
   return isExternal(url)
 }
 
+function isHiddenFlag(val: unknown) {
+  return val === true || val === 'true' || val === 1 || val === '1'
+}
+
 function isVisible(menu?: MenuItem) {
-  return menu?.hidden !== true
+  return !isHiddenFlag(menu?.hidden)
 }
 
 function getFirstVisibleChild(node: MenuItem) {
@@ -99,23 +103,38 @@ function toRootPath(path: string) {
   return path.startsWith('/') ? path : `/${path}`
 }
 
-function convertToRoutes(menuList: MenuItem[], isRoot = true): AppRouteRecordRaw[] {
+function buildMeta(item: MenuItem, hidden: boolean, hideSidebar: boolean) {
+  return {
+    title: item.name,
+    icon: item.icon,
+    hidden,
+    hideSidebar,
+  }
+}
+
+function convertToRoutes(
+  menuList: MenuItem[],
+  isRoot = true,
+  parentHidden = false,
+): AppRouteRecordRaw[] {
   const routes: AppRouteRecordRaw[] = []
   menuList.forEach((item) => {
-    const routePath = isRoot ? toRootPath(item.path) : item.path
+    const hidden = isHiddenFlag(item.hidden)
+    const hideSidebar = !hidden && !parentHidden && item.hideSidebar === true
+    const nestedHidden = parentHidden || hidden
+    const childrenRoutes = item.children
+      ? convertToRoutes(item.children, false, nestedHidden)
+      : []
+
     if (item.componentUri === 'Layout') {
-      const childrenRoutes = item.children ? convertToRoutes(item.children, false) : []
+      const routePath = isRoot ? toRootPath(item.path) : item.path
       const route: AppRouteRecordRaw = {
         alwaysShow: false,
         path: routePath,
         name: item.component || `layout-${item.path}`,
         component: () => import('@/layout/index.vue'),
-        meta: {
-          title: item.name,
-          icon: item.icon,
-          hideSidebar: item.hideSidebar === true,
-        },
-        hidden: item.hidden,
+        meta: buildMeta(item, hidden, hideSidebar),
+        hidden,
       }
       const firstChildPath = getFirstChildFullPath(item)
       if (firstChildPath && !isExternal(firstChildPath)) route.redirect = firstChildPath
@@ -129,29 +148,41 @@ function convertToRoutes(menuList: MenuItem[], isRoot = true): AppRouteRecordRaw
         route.children = childrenRoutes
       }
       routes.push(route)
-    } else {
-      let newPath = isRoot ? toRootPath(item.path) : item.path
-      if (item.externalLink && !isHttpOrHttps(item.path)) {
-        newPath = window.location.origin + item.path
-      }
-      const childrenRoutes = item.children ? convertToRoutes(item.children, false) : []
-      const route: AppRouteRecordRaw = {
+      return
+    }
+
+    let newPath = isRoot ? toRootPath(item.path) : item.path
+    if (item.externalLink && !isHttpOrHttps(item.path)) {
+      newPath = window.location.origin + item.path
+    }
+    const viewRoute: AppRouteRecordRaw = {
+      path: isRoot && !isExternal(String(newPath)) ? '' : newPath,
+      name: item.component || `view-${newPath}`,
+      component: loadView(item.componentUri),
+      meta: buildMeta(item, hidden, hideSidebar),
+      hidden,
+    }
+    if (childrenRoutes.length > 0) {
+      viewRoute.children = childrenRoutes
+      const firstChildPath = getFirstChildFullPath(item)
+      if (firstChildPath && !isExternal(firstChildPath)) viewRoute.redirect = firstChildPath
+    }
+
+    // 顶层业务页必须包 Layout，否则 App.vue 的 RouterView 会直接渲染页面，没有侧栏和顶栏。
+    // 「默认权限（勿删）」这类 hidden 菜单经常是 /index + 首页组件，会抢先匹配并导致整栏消失。
+    if (isRoot && !isExternal(String(newPath))) {
+      routes.push({
+        alwaysShow: false,
         path: newPath,
-        name: item.component || `view-${newPath}`,
-        component: loadView(item.componentUri),
-        meta: {
-          title: item.name,
-          icon: item.icon,
-          hideSidebar: item.hideSidebar === true,
-        },
-        hidden: item.hidden,
-      }
-      if (childrenRoutes.length > 0) {
-        route.children = childrenRoutes
-        const firstChildPath = getFirstChildFullPath(item)
-        if (firstChildPath && !isExternal(firstChildPath)) route.redirect = firstChildPath
-      }
-      routes.push(route)
+        name: item.component ? `layout-${item.component}` : `layout-${newPath}`,
+        component: () => import('@/layout/index.vue'),
+        meta: buildMeta(item, hidden, false),
+        hidden,
+        children: [viewRoute],
+      })
+    } else {
+      viewRoute.path = newPath
+      routes.push(viewRoute)
     }
   })
   return routes
@@ -160,7 +191,7 @@ function convertToRoutes(menuList: MenuItem[], isRoot = true): AppRouteRecordRaw
 function convertToUriRoutes(menuList: MenuItem[], parentPath = '', isRoot = true): string[] {
   let uriRoutes: string[] = []
   menuList.forEach((item) => {
-    if (isRoot && item.hidden == true && item.componentUri !== 'Layout') {
+    if (isRoot && isHiddenFlag(item.hidden) && item.componentUri !== 'Layout') {
       return
     }
     let currentPath = item.path
