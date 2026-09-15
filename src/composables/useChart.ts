@@ -9,6 +9,7 @@ export function useChart() {
 
   function init(option?: EChartsOption) {
     if (!elRef.value) return
+    chart.value?.dispose()
     chart.value = echarts.init(elRef.value)
     if (option) chart.value.setOption(option)
   }

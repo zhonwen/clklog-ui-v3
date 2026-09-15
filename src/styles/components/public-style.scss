@@ -1,0 +1,62 @@
+.public-block {
+  margin: 20px;
+  box-sizing: border-box;
+}
+
+.public-radius {
+  border-radius: 6px;
+}
+
+.public-table-block {
+  box-sizing: border-box;
+  margin: 20px 0;
+  padding: 25px;
+  background: #fff;
+}
+
+.public-card-block {
+  box-sizing: border-box;
+  margin: 20px 0;
+  padding: 25px;
+  background: #fff;
+}
+
+.public-hoverItem {
+  border-radius: 6px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.public-hoverItem:hover {
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.2);
+}
+
+.block-main {
+  box-sizing: border-box;
+  padding: 25px;
+  background-color: #fff;
+
+  .block-head {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    position: relative;
+    margin-bottom: 17px;
+
+    .block-title {
+      display: flex;
+      font-weight: 600;
+      font-size: 15px;
+      color: #4d4d4d;
+    }
+
+    .block-head-icon {
+      display: flex;
+      box-sizing: content-box;
+      margin-left: auto;
+      text-align: right;
+      color: #acaaaa;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  }
+}

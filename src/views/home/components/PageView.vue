@@ -1,0 +1,63 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { getVisitUriApi } from '@/api/trackingapi/visituri'
+import { percentage } from '@/utils/percent'
+import arrowIcon from '@/assets/images/icon.png'
+
+const props = defineProps<{
+  commonParams: Record<string, unknown>
+}>()
+
+const router = useRouter()
+const loadingRefresh = ref(false)
+const getVisitList = ref<Record<string, unknown>[]>([])
+
+function tableHeaderColor({ columnIndex }: { columnIndex: number }) {
+  return columnIndex === 0 ? 'text-align:left' : 'text-align:center'
+}
+
+function getVisitUri() {
+  loadingRefresh.value = true
+  getVisitUriApi({ ...props.commonParams })
+    .then((res) => {
+      loadingRefresh.value = false
+      getVisitList.value = (res.data as Record<string, unknown>[]) || []
+    })
+    .catch(() => {
+      loadingRefresh.value = false
+    })
+}
+
+defineExpose({ getVisitUri })
+</script>
+
+<template>
+  <div v-loading="loadingRefresh" class="PageView block-main public-hoverItem">
+    <div class="block-head" @click="router.push('/access/interviewdPage/visitedPage')">
+      <div class="block-title">Top10受访页面</div>
+      <div class="block-head-icon">
+        <img :src="arrowIcon" alt="" width="10" />
+      </div>
+    </div>
+    <div class="block-index-form">
+      <el-table
+        class="public-radius"
+        :data="getVisitList"
+        :cell-style="tableHeaderColor"
+        style="width: 100%"
+      >
+        <el-table-column align="left" prop="uri" label="受访页面" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.title }}<br />
+            {{ row.uri }}
+          </template>
+        </el-table-column>
+        <el-table-column align="center" prop="pv" label="浏览量" width="150" />
+        <el-table-column align="center" label="占比" width="150">
+          <template #default="{ row }">{{ percentage(row.percent as number) }}</template>
+        </el-table-column>
+      </el-table>
+    </div>
+  </div>
+</template>
