@@ -30,6 +30,14 @@
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.2);
 }
 
+// 单行省略，v2 index.scss:366 的全局类，访客详情弹窗等多处在用
+.overItem {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 30px;
+  white-space: nowrap;
+}
+
 .block-main {
   box-sizing: border-box;
   padding: 25px;

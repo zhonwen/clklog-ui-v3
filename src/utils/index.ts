@@ -1,4 +1,21 @@
+import type { RouteLocationRaw } from 'vue-router'
+import router from '@/router'
+
 export const hideSidebarPathNames = ['userInfo']
+
+/**
+ * 在新标签页打开路由（用户信息详情页）。
+ * 会自动带上 _from，详情页的「返回来源页」靠它（对齐 v2 utils/index.js 的同名函数）。
+ */
+export function openNewTab(location: { name?: string; path?: string; query?: Record<string, unknown> }) {
+  if (!location) return
+  const fromPath = router.currentRoute.value?.fullPath || ''
+  const query: Record<string, unknown> = { ...(location.query || {}) }
+  if (!query._from) query._from = fromPath
+  const route = router.resolve({ ...location, query } as RouteLocationRaw)
+  const base = `${window.location.origin}${window.location.pathname}`
+  window.open(`${base}${route.href}`, '_blank')
+}
 
 export function debounce<Args extends unknown[], R>(
   func: (...args: Args) => R,

@@ -1,0 +1,17 @@
+// 对齐 v2 styles/components/el-pagination.scss
+// v2 里是在组件内用 ::v-deep @import 引入的，v3 改成 :deep() 包裹后 @use
+.el-pagination {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.el-pagination__total {
+  position: absolute;
+  left: 0;
+}
+
+.block {
+  margin: 15px 0 0;
+}
