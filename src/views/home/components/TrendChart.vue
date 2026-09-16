@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import LineMarker from '@/components/Charts/LineMarker.vue'
 import { getFlowTrendApi } from '@/api/trackingapi/flow'
 import arrowIcon from '@/assets/images/icon.png'
+import { useLatestOnly } from '@/composables/useLatestOnly'
 
 const props = defineProps<{
   commonParams: Record<string, unknown>
@@ -11,6 +12,7 @@ const props = defineProps<{
 
 const router = useRouter()
 const loadingRefresh = ref(false)
+const { next, isLatest } = useLatestOnly()
 const trendChartRef = ref<{
   getApiTrendList: (val: unknown[], lege: string[]) => void
   changeLegend: (val: string[]) => void
@@ -25,15 +27,18 @@ const options = [
 ]
 
 function getFlowTrend() {
+  const token = next()
   loadingRefresh.value = true
   getFlowTrendApi({ ...props.commonParams })
     .then((res) => {
+      if (!isLatest(token)) return
       loadingRefresh.value = false
       if (res.code == 200) {
         trendChartRef.value?.getApiTrendList((res.data as unknown[]) || [], headLege.value)
       }
     })
     .catch(() => {
+      if (!isLatest(token)) return
       loadingRefresh.value = false
     })
 }

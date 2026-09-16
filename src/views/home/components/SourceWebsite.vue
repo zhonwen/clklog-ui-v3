@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { percentage } from '@/utils/percent'
 import { getSourceWebsiteApi } from '@/api/trackingapi/sourcewebsite'
 import arrowIcon from '@/assets/images/icon.png'
+import { useLatestOnly } from '@/composables/useLatestOnly'
 
 const props = defineProps<{
   commonParams: Record<string, unknown>
@@ -11,6 +12,7 @@ const props = defineProps<{
 
 const router = useRouter()
 const loadingRefresh = ref(false)
+const { next, isLatest } = useLatestOnly()
 const SourceWebsitelist = ref<Record<string, unknown>[]>([])
 
 function tableHeaderColor({ columnIndex }: { columnIndex: number }) {
@@ -18,13 +20,16 @@ function tableHeaderColor({ columnIndex }: { columnIndex: number }) {
 }
 
 function getSourceWebsite() {
+  const token = next()
   loadingRefresh.value = true
   getSourceWebsiteApi({ ...props.commonParams })
     .then((res) => {
+      if (!isLatest(token)) return
       loadingRefresh.value = false
       SourceWebsitelist.value = (res.data as Record<string, unknown>[]) || []
     })
     .catch(() => {
+      if (!isLatest(token)) return
       loadingRefresh.value = false
     })
 }

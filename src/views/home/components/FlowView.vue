@@ -6,6 +6,7 @@ import { averageRules, percentage } from '@/utils/percent'
 import { formatTime } from '@/utils/format'
 import riseImg from '@/assets/images/rise.png'
 import declineImg from '@/assets/images/decline.png'
+import { useLatestOnly } from '@/composables/useLatestOnly'
 
 type FlowMetrics = {
   pv?: number
@@ -33,6 +34,7 @@ const props = defineProps<{
 }>()
 
 const loadingRefresh = ref(false)
+const { next, isLatest } = useLatestOnly()
 const flowData = ref<FlowData | null>(null)
 const timeType = ref('')
 
@@ -70,14 +72,17 @@ function handleClickSessionEvent() {
 }
 
 function getFlow() {
+  const token = next()
   timeType.value = props.timeTypeFlag || ''
   loadingRefresh.value = true
   getFlowApi({ ...props.commonParams })
     .then((res) => {
+      if (!isLatest(token)) return
       loadingRefresh.value = false
       flowData.value = (res.data || null) as FlowData
     })
     .catch(() => {
+      if (!isLatest(token)) return
       loadingRefresh.value = false
     })
 }

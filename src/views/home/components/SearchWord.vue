@@ -5,6 +5,7 @@ import { getInternalSearchWordDetailApi } from '@/api/trackingapi/searchword'
 import { copyObj } from '@/utils/copy'
 import { percentage } from '@/utils/percent'
 import arrowIcon from '@/assets/images/icon.png'
+import { useLatestOnly } from '@/composables/useLatestOnly'
 
 const props = defineProps<{
   commonParams: Record<string, unknown>
@@ -12,6 +13,7 @@ const props = defineProps<{
 
 const router = useRouter()
 const loadingRefresh = ref(false)
+const { next, isLatest } = useLatestOnly()
 const searchWordList = ref<Record<string, unknown>[]>([])
 
 function tableHeaderColor({ columnIndex }: { columnIndex: number }) {
@@ -19,10 +21,12 @@ function tableHeaderColor({ columnIndex }: { columnIndex: number }) {
 }
 
 function getSearchWord() {
+  const token = next()
   loadingRefresh.value = true
   const onSiteParams = copyObj({ ...props.commonParams, pageSize: 10, pageNum: 1 })
   getInternalSearchWordDetailApi(onSiteParams)
     .then((res) => {
+      if (!isLatest(token)) return
       loadingRefresh.value = false
       if (res.code == 200) {
         const data = res.data as { rows?: Record<string, unknown>[] }
@@ -30,6 +34,7 @@ function getSearchWord() {
       }
     })
     .catch(() => {
+      if (!isLatest(token)) return
       loadingRefresh.value = false
     })
 }

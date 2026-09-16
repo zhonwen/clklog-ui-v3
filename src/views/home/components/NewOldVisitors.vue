@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PieMarker from '@/components/Charts/PieMarker.vue'
 import { getVisitorApi } from '@/api/trackingapi/visitor'
 import { percentage } from '@/utils/percent'
 import { formatTime } from '@/utils/format'
 import arrowIcon from '@/assets/images/icon.png'
+import { useLatestOnly } from '@/composables/useLatestOnly'
 
 type VisitorMetrics = {
   pv?: number
@@ -21,6 +22,7 @@ const props = defineProps<{
 
 const router = useRouter()
 const loadingRefresh = ref(false)
+const { next, isLatest } = useLatestOnly()
 const visitorList = ref<{ newVisitor?: VisitorMetrics; oldVisitor?: VisitorMetrics } | null>(null)
 const newVistorPercent = ref('')
 const oldVistorPercent = ref('')
@@ -35,13 +37,16 @@ function formatTimeFun(val?: number) {
 }
 
 function getVisitor() {
+  const token = next()
   loadingRefresh.value = true
   getVisitorApi({ ...props.commonParams })
     .then((res) => {
+      if (!isLatest(token)) return
       loadingRefresh.value = false
       if (res.code == 200) visitorList.value = (res.data || null) as typeof visitorList.value
     })
     .catch(() => {
+      if (!isLatest(token)) return
       loadingRefresh.value = false
     })
 }
@@ -66,6 +71,10 @@ watch(visitorList, () => {
       ...props.commonParams,
     })
   }, 80)
+})
+
+onBeforeUnmount(() => {
+  if (updateTimer) clearTimeout(updateTimer)
 })
 
 defineExpose({ getVisitor })
