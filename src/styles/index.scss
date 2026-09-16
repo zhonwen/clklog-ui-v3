@@ -80,6 +80,150 @@ a {
   z-index: 1000;
 }
 
+// 以下三条来源 v2 src/styles/index.scss:74-83，v3 原先只迁了 .tabBarBtn 本体，
+// 缺子规则会让 analysisBar / bookMark / 元数据等页面的刷新、重置按钮宽度不一致
+.tabBarBtn .el-loading-spinner {
+  margin-top: -6px;
+}
+
+.tabBarBtn .refresh {
+  width: 70px;
+}
+
+.tabBarBtn .reset {
+  width: 70px;
+  margin-left: 10px;
+}
+
+// 来源 v2 src/styles/index.scss:86（元数据上传弹窗等的说明文案）
+.zc_explain_tip {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 25px;
+  color: #4d4d4d;
+  letter-spacing: 1px;
+}
+
+// 来源 v2 src/styles/index.scss:116、121（模板下载链接）
+.zc_downTip {
+  border-bottom: 1px solid #ccd1d4;
+  cursor: pointer;
+  color: #2c7be5;
+}
+
+.zc_downTip:hover {
+  color: #6ba3ed !important;
+}
+
+// 来源 v2 src/styles/index.scss:124（上传中的 loading 尺寸）
+.zc_loading_upload .el-loading-spinner .circular {
+  height: 30px;
+  width: 30px;
+  margin-top: 5px;
+}
+
+// 「名词解释」表格，来源 v2 src/styles/index.scss:137
+// 活跃用户 / 沉默用户 / 留存用户等页面底部的说明表格全靠它
+.customTable {
+  .tdStyle {
+    display: flex;
+    text-align: center;
+    justify-content: center;
+
+    .setPadding {
+      margin-left: 14px;
+    }
+  }
+
+  table {
+    border-radius: 6px;
+    border-color: rgba(247, 247, 247, 0.39);
+  }
+
+  table th {
+    font-weight: 500;
+    color: #4d4d4d;
+    height: 40px;
+    text-align: center;
+  }
+
+  td:nth-child(1) {
+    background-color: #f7fafe;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 25px;
+    color: #4d4d4d;
+  }
+
+  table tr {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 25px;
+    color: #4d4d4d;
+  }
+
+  table td {
+    color: #4d4d4d;
+    height: 40px;
+    text-align: center;
+  }
+
+  table tr:first-child th:first-child {
+    border-top-left-radius: 6px;
+  }
+
+  table tr:first-child th:last-child {
+    border-top-right-radius: 6px;
+  }
+
+  table tr:last-child td:first-child {
+    border-bottom-left-radius: 6px;
+  }
+
+  table tr:last-child td:last-child {
+    border-bottom-right-radius: 6px;
+  }
+}
+
+// 指标下拉的无边框样式，来源 v2 src/styles/element-ui.scss:145
+// 注意：element-plus 把边框移到了 .el-input__wrapper，这里同时兼容两种结构
+.appli-select-style {
+  .el-input__wrapper {
+    box-shadow: none !important;
+    background-color: transparent !important;
+    padding-left: 10px !important;
+  }
+
+  .el-input__inner {
+    border: none !important;
+    background-color: transparent !important;
+    font-size: 12px !important;
+    transform: scale(0.9);
+    height: 30px !important;
+    line-height: 30px !important;
+    padding-left: 10px !important;
+  }
+
+  .el-input__suffix {
+    height: 30px !important;
+    display: flex;
+    align-items: center;
+  }
+
+  .el-input__icon {
+    line-height: 30px !important;
+  }
+}
+
+// 行为轨迹的事件详情抽屉：抽屉 append-to-body 后 scoped 选择器打不到，必须放全局
+// （v2 写在组件的 ::v-deep 里，实际一直没生效）
+.seq-detail-drawer .el-drawer__body {
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
 .zc_btn {
   z-index: 99;
   height: 30px;

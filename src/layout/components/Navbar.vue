@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ArrowDown, Download } from '@element-plus/icons-vue'
 import Cookies from 'js-cookie'
 import { getMenuList } from '@/api/user'
 import { getChannelListApi } from '@/api/trackingapi/channel'
@@ -50,6 +50,18 @@ function initDate() {
   const weekMap = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
   dateWeek.value = weekMap[date.getDay()] || ''
   dateTime.value = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
+}
+
+/** 领导驾驶舱（路由 name 为 summary）才显示顶栏的「下载」按钮，与 v2 showDownLoad 一致 */
+const downPageFlag = ref(false)
+
+function showDownLoad(val: typeof route) {
+  downPageFlag.value = val.name === 'summary'
+}
+
+/** 通知当前页面自行截图导出，领导驾驶舱监听 $downPage */
+function onSaveCanvas() {
+  bus.emit('$downPage')
 }
 
 function isOrNotRoute(val: typeof route) {
@@ -165,8 +177,34 @@ watch(
 
 watch(
   () => route.fullPath,
-  () => isOrNotRoute(route),
+  () => {
+    isOrNotRoute(route)
+    showDownLoad(route)
+  },
 )
+
+/**
+ * 自定义分析 / 漏斗分析打开书签时，按书签里的 projectName 切项目
+ * （对齐 v2 Navbar 的 $CHECKPROJECT 监听）
+ */
+function handleCheckProject(val: unknown) {
+  const projectName = typeof val === 'string' ? val : ''
+  if (!projectName) return
+  prejectCode.value = projectName
+  trackingStore.setProject(projectName)
+}
+
+/** 业务页请求登出（对齐 v2 Navbar 的 $loginOut 监听） */
+function handleLoginOut() {
+  void logout()
+}
+
+/** 顶栏监听的三个全局事件，注册与注销必须传同一个 handler 引用 */
+function registerBusHandlers() {
+  bus.on('$updateMenu', reloadMenu)
+  bus.on('$CHECKPROJECT', handleCheckProject)
+  bus.on('$loginOut', handleLoginOut)
+}
 
 function reloadMenu() {
   void getMenuList({ projectName: trackingStore.projectName }).then((res) => {
@@ -186,6 +224,7 @@ onMounted(() => {
     return
   }
   isOrNotRoute(route)
+  showDownLoad(route)
   try {
     userName.value = JSON.parse(Cookies.get('userInfo') || '{}').username || ''
   } catch {
@@ -209,7 +248,7 @@ onMounted(() => {
         void handleChangeProject(parsed.projectName, true)
         initDate()
         document.addEventListener('visibilitychange', onVisibility)
-        bus.on('$updateMenu', reloadMenu)
+        registerBusHandlers()
         return
       }
     } catch {
@@ -235,8 +274,8 @@ onMounted(() => {
     channelTypeList(prejectCode.value)
   }
 
-  // 菜单管理保存后实时刷新侧栏（v2 的 $bus.$on('$updateMenu')）
-  bus.on('$updateMenu', reloadMenu)
+  // 菜单管理保存后刷新侧栏、书签切项目、业务页请求登出
+  registerBusHandlers()
   initDate()
   document.addEventListener('visibilitychange', onVisibility)
 })
@@ -244,6 +283,8 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', onVisibility)
   bus.off('$updateMenu', reloadMenu)
+  bus.off('$CHECKPROJECT', handleCheckProject)
+  bus.off('$loginOut', handleLoginOut)
 })
 </script>
 
@@ -275,6 +316,15 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="right-menu">
+        <!-- 只在领导驾驶舱显示，点击后由页面自己截图导出（v2 Navbar 的 onSaveCanvas） -->
+        <div
+          v-if="downPageFlag"
+          class="btnEvent"
+          style="margin-right: 20px; background: #2c7be5; color: #fff"
+          @click="onSaveCanvas"
+        >
+          <el-icon style="font-size: 14px"><Download /></el-icon>下载
+        </div>
         <div class="dataTime">{{ dateTime }}&nbsp;&nbsp;{{ dateWeek }}</div>
         <el-dropdown class="avatar-container">
           <div class="avatar-wrapper">
@@ -376,6 +426,20 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   margin-right: 16px;
+}
+
+// 顶栏「下载」按钮，来源 v2 layout/components/Navbar.vue:490
+.btnEvent {
+  cursor: pointer;
+  width: 65px;
+  height: 28px;
+  color: #194580;
+  font-weight: 600;
+  border: 1px solid #d8e2ef;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 28px;
+  text-align: center;
 }
 
 .dataTime {

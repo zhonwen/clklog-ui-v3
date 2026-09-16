@@ -34,6 +34,12 @@ export default defineConfigWithVueTs(
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' },
       ],
 
+      // 规则构建器（analysis-model/*、custom-analysis、userReview/typeRules）沿用 v2 的数据流：
+      // 父组件传入 modelObject，子组件就地修改它，不走 emit。
+      // Vue 2 允许这样改 props 对象的内部属性，v2 全靠它联动；改成单向数据流等于重构数据结构，
+      // 与「逻辑严格以 v2 为基准」冲突。这里降为 warn 保持可见，后续若要整改可逐个文件收敛。
+      'vue/no-mutating-props': 'warn',
+
       // FilterBar 的开关属性沿用 v2 的 PascalCase 命名（ByArea / ByData ...）。
       // Vue 3 会把模板里的 by-area 归一成 byArea，与声明的 ByArea 对不上，
       // 这条规则一旦 --fix 会把所有筛选条开关改成短横线写法并静默失效，因此关掉。

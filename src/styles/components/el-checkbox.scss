@@ -1,0 +1,51 @@
+/**
+ * 复选框统一样式。来源：v2 src/styles/components/el-checkbox.scss。
+ *
+ * v2 是在组件的 `<style scoped>` 里写 `::v-deep { @import "~@/styles/components/el-checkbox.scss"; }`。
+ * v3 的 sass 不允许 @use 出现在嵌套块内（会整页编译失败），所以这里把每条规则
+ * 直接写成 :deep(...)，组件侧在 `<style lang="scss" scoped>` 顶部 `@use` 本文件即可，
+ * 效果与 v2 的 ::v-deep 包裹一致（编译成 `[data-v-x] .el-checkbox`）。
+ *
+ * 注意：本文件只能被 scoped 的 SFC 样式块引用，不要在全局 index.scss 里 @use。
+ */
+
+:deep(.el-checkbox) {
+  width: 100px;
+  margin-right: 80px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 25px;
+  color: #194580;
+}
+
+:deep(.el-checkbox__label) {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 30px;
+}
+
+:deep(.el-checkbox__input.is-checked + .el-checkbox__label) {
+  color: #194580;
+}
+
+:deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+  background-image: none;
+}
+
+// 隐藏原生勾选样式，使用背景图SVG
+:deep(.el-checkbox__inner::after) {
+  display: none !important;
+}
+
+:deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+}
+
+// 与 v2 一致（v2 此处逻辑存疑：类名写成了 .el-checkbox__inne，少一个 r，实际不会命中任何元素）
+:deep(.el-checkbox__inne) {
+  border-radius: 4px;
+}
+
+:deep(.el-checkbox__inner::after) {
+  left: 18px;
+}

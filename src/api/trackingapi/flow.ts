@@ -4,6 +4,11 @@ export function getFlowApi(params: Record<string, unknown>) {
   return request({ url: '/flow/getFlow', method: 'post', data: params })
 }
 
+/** 流量概览头部（趋势分析用） */
+export function getFlowTotalApi(params: Record<string, unknown>) {
+  return request({ url: '/flow/getFlowTotal', method: 'post', data: params })
+}
+
 export function getFlowTrendApi(params: Record<string, unknown>) {
   return request({ url: '/flow/getFlowTrend', method: 'post', data: params })
 }

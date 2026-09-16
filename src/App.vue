@@ -1,11 +1,31 @@
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterView } from 'vue-router'
 import ModifyPsw from '@/components/ModifyPsw/index.vue'
+import DialogPage from '@/views/sys-manage/component/dialog.vue'
+import { bus } from '@/utils/event-bus'
 // favicon 由 index.html 的 <link rel="icon"> 指定，不再在运行时重复插入
+
+// 演示环境拦截弹窗：权限管理、元数据管理等页面在受限操作时 bus.emit('$demo_event')，
+// 由这里统一弹「演示环境不能执行相关操作」（对齐 v2 App.vue 的 $demo_event 监听）
+const dialogPage = ref<{ dialogEvent: () => void } | null>(null)
+
+function handleDemoEvent() {
+  dialogPage.value?.dialogEvent()
+}
+
+onMounted(() => {
+  bus.on('$demo_event', handleDemoEvent)
+})
+
+onBeforeUnmount(() => {
+  bus.off('$demo_event', handleDemoEvent)
+})
 </script>
 
 <template>
   <RouterView />
+  <DialogPage ref="dialogPage" />
   <ModifyPsw />
 </template>
 

@@ -7,3 +7,8 @@ export function getInternalSearchWordDetailApi(params: Record<string, unknown>) 
     data: params,
   })
 }
+
+/** 站外搜索词详情（v2 api/trackingapi/searchword.js getSearchWordDetailApi） */
+export function getSearchWordDetailApi(params: Record<string, unknown>) {
+  return request({ url: '/searchword/getSearchWordDetail', method: 'post', data: params })
+}

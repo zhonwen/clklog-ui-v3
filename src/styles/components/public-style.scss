@@ -7,6 +7,53 @@
   border-radius: 6px;
 }
 
+// 来源 v2 src/styles/components/public-style.scss:23，访问分析等 8 个页面的表格外框在用
+.public-Table-minHeight {
+  margin-top: 15px;
+  box-sizing: border-box;
+}
+
+// 来源 v2 src/styles/components/public-style.scss:28，趋势分析等页面的图表块
+.public-echart-block {
+  margin: 20px 0;
+  width: 100%;
+  min-height: 300px;
+}
+
+// 文字级别：来源 v2 src/styles/components/public-style.scss:40、45
+.public-secondHead {
+  font-size: 15px;
+  font-weight: 500;
+  color: #4d4d4d;
+}
+
+.public-threeHead {
+  font-size: 13px;
+  font-weight: 500;
+  color: #4d4d4d;
+}
+
+// 间距工具类：来源 v2 src/styles/components/public-style.scss:67-85
+.setHeadMargin {
+  margin-bottom: 20px;
+}
+
+.setPagination {
+  margin-top: 15px;
+}
+
+.setMarginLeft {
+  margin-left: 15px;
+}
+
+.setMarginRight {
+  margin-right: 15px;
+}
+
+.setMarginTop {
+  margin-top: 15px;
+}
+
 .public-table-block {
   box-sizing: border-box;
   margin: 20px 0;
@@ -28,6 +75,43 @@
 
 .public-hoverItem:hover {
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.2);
+}
+
+// 文字级别大小，来源：v2 src/styles/components/public-style.scss:34
+.public-firstHead {
+  font-size: 15px;
+  font-weight: 600;
+  color: #4d4d4d;
+  white-space: nowrap;
+}
+
+// 页面概览块的统一间距，来源：v2 src/styles/components/public-style.scss:87
+.Overview {
+  min-height: 118px;
+  background-color: #fff;
+  padding: 15px;
+}
+
+// 分页外层容器，来源：v2 src/styles/index.scss:242
+.block {
+  display: block;
+}
+
+// 文字级别大小，来自 v2 styles/components/public-style.scss（权限管理各页的标题在用）
+.public-firstHead {
+  font-size: 15px;
+  font-weight: 600;
+  color: #4d4d4d;
+  white-space: nowrap;
+}
+
+// 表格区块标题，来自 v2 styles/components/public-style.scss
+.public-tableHead {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 25px;
+  color: #4d4d4d;
+  margin-bottom: 20px;
 }
 
 // 单行省略，v2 index.scss:366 的全局类，访客详情弹窗等多处在用
@@ -67,4 +151,69 @@
       cursor: pointer;
     }
   }
+}
+
+// 顶栏右侧「刷新」按钮的定位，来源 v2 src/styles/index.scss:60 的 .zc_refreshApi
+// （v3 index.scss 只迁了 .zc_btn / .zc_btn_default，缺这一条；领导驾驶舱 desktop 顶栏在用）
+.zc_refreshApi {
+  position: fixed;
+  width: 65px;
+  right: 30px;
+}
+
+// 流量基础指标多选 checkbox 统一样式。
+// 来源：v2 src/styles/index.scss:467 的全局 .flow-indicator，
+// components/flowPoint/index.vue、components/flowPoint/system.vue 的根节点在用。
+.flow-indicator {
+  min-height: 58px;
+  border: 1px solid #f0f0f5;
+  border-radius: 6px;
+  box-sizing: border-box;
+
+  .setSpace {
+    margin-top: 2px !important;
+    margin-bottom: 12px;
+  }
+
+  .flow-item {
+    display: flex;
+    margin-top: 12px;
+    margin-left: 10px;
+
+    .flow-title {
+      white-space: nowrap;
+      box-sizing: border-box;
+      margin-right: 21px;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 30px;
+      color: #4d4d4d;
+    }
+  }
+
+  .check_item {
+    background-color: #ffffff;
+    height: 40px;
+    border-radius: 4px;
+    border: 1px solid #eee;
+    display: flex;
+    align-items: center;
+
+    span {
+      font-size: 14px;
+      padding: 0 10px;
+    }
+
+    .checkBoxStyle {
+      margin-right: 10px;
+    }
+  }
+}
+
+// table 过滤器统一背景色。
+// 来源：v2 src/styles/components/element-unify-style.scss:36 的 .public_indicator，
+// 与 .flow-indicator 一起挂在 flowPoint 的根节点上。
+.public_indicator {
+  background-color: #fbfcfe !important;
+  border: 1px solid #d8e2ef !important;
 }
