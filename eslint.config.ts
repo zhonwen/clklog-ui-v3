@@ -34,6 +34,11 @@ export default defineConfigWithVueTs(
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' },
       ],
 
+      // FilterBar 的开关属性沿用 v2 的 PascalCase 命名（ByArea / ByData ...）。
+      // Vue 3 会把模板里的 by-area 归一成 byArea，与声明的 ByArea 对不上，
+      // 这条规则一旦 --fix 会把所有筛选条开关改成短横线写法并静默失效，因此关掉。
+      'vue/attribute-hyphenation': 'off',
+
       // v2 迁过来的代码里大量 == / !=，暂时只警告，逐个模块收敛
       eqeqeq: ['warn', 'always', { null: 'ignore' }],
       'no-console': ['warn', { allow: ['warn', 'error'] }],

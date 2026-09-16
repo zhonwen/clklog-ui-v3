@@ -19,8 +19,24 @@ body,
   margin: 0;
 }
 
-html {
+/**
+ * 主题色对齐 v2（element-variables.scss 的 $--color-primary: #2c7be5）。
+ * 必须写在 :root 上：element-plus 的 dist/index.css 就是 :root 选择器，
+ * 写 html 选择器优先级更低（0,0,1 < 0,1,0），覆盖不生效，按钮会退回默认的 #409eff。
+ * light-3 ~ light-9 / dark-2 是 element-plus 单独写死的派生色，不会跟着主色自动变，这里一并给出。
+ */
+:root {
   --el-color-primary: #2c7be5;
+  --el-color-primary-rgb: 44, 123, 229;
+  --el-color-primary-light-3: #5a97eb;
+  --el-color-primary-light-5: #95bdf2;
+  --el-color-primary-light-7: #d0daf9;
+  --el-color-primary-light-8: #d5e5fb;
+  --el-color-primary-light-9: #eaf2fd;
+  --el-color-primary-dark-2: #2362b7;
+}
+
+html {
   height: 100%;
   box-sizing: border-box;
 }

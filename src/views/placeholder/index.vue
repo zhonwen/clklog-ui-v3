@@ -46,7 +46,6 @@ function exportPdf() {
           </el-descriptions-item>
         </el-descriptions>
         <div class="actions">
-          <el-button v-permission="['admin']" type="danger">仅 admin 可见</el-button>
           <el-button v-clipboard="copyText">复制文案</el-button>
           <el-button type="primary" @click="exportPdf">导出 PDF</el-button>
         </div>

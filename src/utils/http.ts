@@ -118,7 +118,9 @@ export interface CreateBizServiceOptions {
   channel: ApiChannel
   attachXToken?: boolean
   timeout?: number
-  /** 返回 true 表示已自行处理，跳过默认报错 */
+  /** 在 423 判断「之前」执行的特判（漏斗分析静默、书签不存在）。返回 true 或 ApiResult 表示已处理 */
+  beforeBizError?: (res: ApiResult, url: string) => boolean | ApiResult | Promise<unknown>
+  /** 在 423 判断「之后」执行的特判。返回 true 表示已自行处理，跳过默认报错 */
   onBizError?: (res: ApiResult, url: string) => boolean | ApiResult | Promise<unknown>
   onHttpError?: (error: unknown) => boolean
 }
@@ -151,14 +153,21 @@ export function createBizService(options: CreateBizServiceOptions): AxiosInstanc
     }
     if (res.code !== 200) {
       const url = response.config.url || ''
-      const handled = await options.onBizError?.(res, url)
-      if (handled === true) return res
-      if (handled && handled !== false) return handled as ApiResult
+      // v2 里各通道的特判分两组：一组在 423 之前（漏斗分析静默、书签不存在），
+      // 一组在 423 之后（自定义分析模型错误、UPS 唯一标识重复）。顺序不能颠倒，
+      // 否则 423 会被特判吃掉，用户看到的是业务提示而不是跳「权限不足」页。
+      const pre = await options.beforeBizError?.(res, url)
+      if (pre === true) return res
+      if (pre && pre !== false) return pre as ApiResult
 
       if (res.code == 423) {
         void router.replace('/PermissionDenied')
         return res
       }
+
+      const handled = await options.onBizError?.(res, url)
+      if (handled === true) return res
+      if (handled && handled !== false) return handled as ApiResult
 
       showErrorOnce(res.message || res.msg || 'Error')
       if (res.code === 50008 || res.code === 50012 || res.code === 50014) {

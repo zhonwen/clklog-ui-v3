@@ -13,7 +13,7 @@ import { useAppStore } from '@/stores/app'
 import { usePermissionStore } from '@/stores/permission'
 import { useTrackingStore } from '@/stores/tracking'
 import { useUserStore } from '@/stores/user'
-import { pickEntryPath } from '@/utils/menu'
+import { getPermissionRedirectPath, pickEntryPath } from '@/utils/menu'
 import { isNavigationFailure } from 'vue-router'
 import { useResizeHandler } from '@/layout/mixin/ResizeHandler'
 
@@ -64,6 +64,12 @@ const loginRules: FormRules = {
 }
 
 const redirect = computed(() => (route.query.redirect as string) || '')
+// v2 登录成功后会把 redirect 以外的 query 一并带到落地页（书签链接的 projectName / query 就靠它）
+const otherQuery = computed(() => {
+  const rest: Record<string, unknown> = { ...route.query }
+  delete rest.redirect
+  return rest as Record<string, string>
+})
 
 function getCaptcha() {
   captchaLoading.value = true
@@ -106,7 +112,15 @@ async function handleLogin() {
     }
     Cookies.set('userInfo', JSON.stringify({ username: loginForm.username }))
     userStore.login(response)
-    const response1 = await getAppMyList()
+    // 与 v2 一致：项目列表拿不到就进 /Unauthorized，而不是留在登录页。
+    // 此时 token 已经写进 Cookie，留在登录页会让用户处于「看着没登录、刷新却能进系统」的半登录态。
+    let response1: Awaited<ReturnType<typeof getAppMyList>> | undefined
+    try {
+      response1 = await getAppMyList()
+    } catch {
+      await router.replace({ path: '/Unauthorized' })
+      return
+    }
     if (!(response1 && response1.code == 200)) {
       await router.replace({ path: '/Unauthorized' })
       return
@@ -121,8 +135,16 @@ async function handleLogin() {
     window.menuListLoaded = true
     const projectName = projectArray[0]?.projectName || ''
     trackingStore.setProject(projectName)
-    const response2 = await getMenuList({ projectName })
-    if (response2.code != 200) {
+    // 与 v2 一致：菜单接口异常进 getPermissionRedirectPath([])（有项目→/NoProjectPermission，无项目→/Unauthorized），
+    // 非 200 进 /NoPermission。
+    let response2: Awaited<ReturnType<typeof getMenuList>> | undefined
+    try {
+      response2 = await getMenuList({ projectName })
+    } catch {
+      await router.push({ path: getPermissionRedirectPath([]) })
+      return
+    }
+    if (!response2 || response2.code != 200) {
       await router.push({ path: '/NoPermission' })
       return
     }
@@ -135,7 +157,7 @@ async function handleLogin() {
       permissionStore.uriRoutes,
     )
     try {
-      await router.replace({ path: defaultPath || '/' })
+      await router.replace({ path: defaultPath || '/', query: otherQuery.value })
     } catch (error) {
       if (!isNavigationFailure(error)) throw error
       await router.replace({ path: '/NoPermission' }).catch(() => undefined)

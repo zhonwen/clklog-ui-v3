@@ -27,6 +27,12 @@ const device = computed(() => appStore.device)
 const options = ref<ProjectItem[]>(
   (getLocalStorage<ProjectItem[]>('projectList') as ProjectItem[]) || trackingStore.projectArray,
 )
+const defaultProject: ProjectItem[] = [
+  {
+    projectName: 'clklogapp',
+    projectDisplayName: 'clklog',
+  },
+]
 const prejectCode = ref(trackingStore.projectName || '')
 const dateTime = ref('')
 const dateWeek = ref('')
@@ -90,11 +96,16 @@ async function handleChangeProject(val: string, isInit = false) {
 
 function channelTypeList(projectName: string) {
   if (!projectName) return
-  void getChannelListApi({ projectName }).then((res) => {
-    if (res.code == 200) {
-      userStore.setChannelList(res.data || [])
-    }
-  })
+  // 403/423 等分支下拦截器会返回 undefined，这里必须容错，否则是一个未捕获的 TypeError
+  void getChannelListApi({ projectName })
+    .then((res) => {
+      if (res?.code == 200) {
+        userStore.setChannelList(res.data || [])
+      }
+    })
+    .catch(() => {
+      /* 报错已由请求层统一提示 */
+    })
 }
 
 function modifyPsw() {
@@ -135,6 +146,9 @@ watch(
         prejectCode.value = trackingStore.projectName || options.value[0]?.projectName || ''
         void handleChangeProject(prejectCode.value)
       }
+    } else {
+      // v2：项目列表为空时回退到默认项目，避免下拉框空白
+      options.value = defaultProject
     }
   },
   { deep: true },
@@ -154,13 +168,20 @@ watch(
   () => isOrNotRoute(route),
 )
 
+function reloadMenu() {
+  void getMenuList({ projectName: trackingStore.projectName }).then((res) => {
+    if (res?.code == 200) {
+      const menuListData = res.data || []
+      userStore.setMenuList(menuListData)
+      void permissionStore.generateAsyncRoutes(menuListData)
+    }
+  })
+}
+
 onMounted(() => {
+  // 与 v2 一致：只看 localStorage 里的 projectList，不是数组就说明登录态不完整，强制登出。
   const projectList = getLocalStorage('projectList')
-  const storeProjects = trackingStore.projectArray
-  if (
-    (!projectList || !Array.isArray(projectList) || projectList.length === 0) &&
-    (!Array.isArray(storeProjects) || storeProjects.length === 0)
-  ) {
+  if (!projectList || !Array.isArray(projectList)) {
     void userStore.logout().then(() => router.push({ path: '/login' }))
     return
   }
@@ -171,28 +192,58 @@ onMounted(() => {
     userName.value = ''
   }
   const savedProjectCode = getLocalStorage<string>('prejectCode')
-  if (options.value.length > 0) {
-    prejectCode.value =
-      (typeof savedProjectCode === 'string' && savedProjectCode) || options.value[0]?.projectName || ''
+  if (options.value.length === 0) {
+    options.value = defaultProject
   }
+  prejectCode.value = String(savedProjectCode || options.value[0]?.projectName || '')
   trackingStore.setProject(prejectCode.value)
-  channelTypeList(prejectCode.value)
-  if (localStorage.getItem('prejectCode') && !window.menuListLoaded) {
-    window.menuListLoaded = true
-    getMenuList({ projectName: prejectCode.value }).then((res) => {
-      if (res.code == 200) {
-        const menuListData = res.data || []
-        userStore.setMenuList(menuListData)
-        void permissionStore.generateAsyncRoutes(menuListData)
+
+  // 事件分析 / 漏斗分析的书签链接会带项目参数，刷新时要按 URL 切项目（v2 Navbar created 同逻辑）
+  const queryParam = route.query.query
+  const projectNameParam = route.query.projectName
+  if (typeof queryParam === 'string' && queryParam) {
+    try {
+      const parsed = JSON.parse(queryParam) as { projectName?: string }
+      if (parsed?.projectName) {
+        prejectCode.value = parsed.projectName
+        void handleChangeProject(parsed.projectName, true)
+        initDate()
+        document.addEventListener('visibilitychange', onVisibility)
+        bus.on('$updateMenu', reloadMenu)
+        return
       }
-    })
+    } catch {
+      // query 不是合法 JSON 时按普通流程走
+    }
   }
+  if (typeof projectNameParam === 'string' && projectNameParam) {
+    prejectCode.value = projectNameParam
+    void handleChangeProject(projectNameParam, true)
+  } else if (localStorage.getItem('prejectCode')) {
+    channelTypeList(prejectCode.value)
+    if (!window.menuListLoaded) {
+      window.menuListLoaded = true
+      void getMenuList({ projectName: prejectCode.value }).then((res) => {
+        if (res?.code == 200) {
+          const menuListData = res.data || []
+          userStore.setMenuList(menuListData)
+          void permissionStore.generateAsyncRoutes(menuListData)
+        }
+      })
+    }
+  } else {
+    channelTypeList(prejectCode.value)
+  }
+
+  // 菜单管理保存后实时刷新侧栏（v2 的 $bus.$on('$updateMenu')）
+  bus.on('$updateMenu', reloadMenu)
   initDate()
   document.addEventListener('visibilitychange', onVisibility)
 })
 
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', onVisibility)
+  bus.off('$updateMenu', reloadMenu)
 })
 </script>
 

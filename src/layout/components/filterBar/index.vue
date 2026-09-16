@@ -89,7 +89,9 @@ const dateWeek_options: DateOption[] = [
 const checked = ref(false)
 const contrastFlag = ref(false)
 const checkLabel = ref('对比时间段')
-const contrastValue = ref<string[]>([])
+// 与 v2 对齐：未开启对比时是空字符串而不是空数组。
+// 业务页用 `v-show="contrastValue"` / `if (contrastValue)` 判断是否对比布局，空数组是真值会判反。
+const contrastValue = ref<string[] | ''>('')
 const dimensionValue = ref('save')
 const activeValue = ref('day')
 const timeSlotValue = ref('day')
@@ -269,7 +271,7 @@ function handleChange(val: string) {
   checked.value = false
   contrastFlag.value = false
   checkLabel.value = '对比时间段'
-  contrastValue.value = []
+  contrastValue.value = ''
   dateFlag.value = null
   const dateTime = toDateNow()
   const toData = new Date(new Date().toLocaleDateString()).getTime() + 8 * 3600 * 1000
@@ -343,19 +345,28 @@ function channelEvent() {
 }
 
 function checkContrast() {
+  // 清空日期选择器时 el-date-picker 给的是 null，v2 在这里会抛 TypeError；这里直接复位。
+  const picked = contrastValue.value
+  if (!Array.isArray(picked) || picked.length < 2) {
+    contrastValue.value = ''
+    dateFlag.value = null
+    return
+  }
   dateFlag.value = 2
-  const copyDate = copyObj(contrastValue.value)
+  const copyDate = copyObj(picked)
+  const next = [...picked]
   const dateOne = Date.parse(currentTime.value[1] || '') - Date.parse(currentTime.value[0] || '')
   const toDate = todateFunc()
-  const rangeDate = Date.parse(toDate) - Date.parse(contrastValue.value[0] || '')
+  const rangeDate = Date.parse(toDate) - Date.parse(next[0] || '')
   if (rangeDate >= dateOne) {
-    const dateTwoEndtimeStamp = Date.parse(contrastValue.value[0] || '') + dateOne
-    contrastValue.value[1] = timeStampFunc(dateTwoEndtimeStamp)
+    const dateTwoEndtimeStamp = Date.parse(next[0] || '') + dateOne
+    next[1] = timeStampFunc(dateTwoEndtimeStamp)
   } else {
-    const reverseDate = Date.parse(contrastValue.value[0] || '') - dateOne
-    contrastValue.value[0] = timeStampFunc(reverseDate)
-    contrastValue.value[1] = copyDate[1] || ''
+    const reverseDate = Date.parse(next[0] || '') - dateOne
+    next[0] = timeStampFunc(reverseDate)
+    next[1] = copyDate[1] || ''
   }
+  contrastValue.value = next
 }
 
 function handleDateFilter(val: string) {
@@ -450,7 +461,7 @@ function checkDateEvnet(val: string[] | null) {
   checked.value = false
   contrastFlag.value = false
   checkLabel.value = '对比时间段'
-  contrastValue.value = []
+  contrastValue.value = ''
   dateFlag.value = null
   timeFlag.value = ''
   startTime.value = val[0] || ''
@@ -469,10 +480,10 @@ function checkDateEvnet(val: string[] | null) {
 function checkTimeSlot(val: boolean) {
   if (val) {
     checkLabel.value = '对比'
-    contrastValue.value = []
+    contrastValue.value = ''
   } else {
     checkLabel.value = '对比时间段'
-    contrastValue.value = []
+    contrastValue.value = ''
     dateFlag.value = null
   }
   contrastFlag.value = val

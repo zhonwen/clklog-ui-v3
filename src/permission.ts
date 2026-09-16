@@ -9,6 +9,7 @@ import { usePermissionStore } from '@/stores/permission'
 import { useTrackingStore } from '@/stores/tracking'
 import { useUserStore } from '@/stores/user'
 import { isProjectSwitching } from '@/utils/project-switching'
+import { CUSTOM_ANALYSIS_PATH, FUNNEL_ANALYSIS_PATH, SUMMARY_PATH } from '@/router/paths'
 
 NProgress.configure({ showSpinner: false })
 
@@ -27,7 +28,7 @@ function isMobile() {
 }
 
 router.beforeEach(async (to, _from, next) => {
-  if (to.path != '/mete/customAnalysis' && to.path != '/mete/funnelAnalysis') {
+  if (to.path != CUSTOM_ANALYSIS_PATH && to.path != FUNNEL_ANALYSIS_PATH) {
     NProgress.start()
   }
   const permissionStore = usePermissionStore()
@@ -61,10 +62,12 @@ router.beforeEach(async (to, _from, next) => {
       const permissionRoles = permissionStore.routes && permissionStore.routes.length > 0
       const permissionUriRoles = permissionStore.uriRoutes
       if (permissionRoles) {
-        if (isMobile() && to.name !== 'summary') {
+        if (isMobile() && to.name !== 'summary' && to.path !== SUMMARY_PATH) {
           const uriRoutes = permissionStore.uriRoutes || []
-          if (uriRoutes.includes('/record/summary')) {
-            next({ name: 'summary' })
+          if (uriRoutes.includes(SUMMARY_PATH)) {
+            // 按 path 跳转：菜单的 component 字段不一定叫 summary，
+            // vue-router 4+ 遇到不存在的 name 会直接抛错导致白屏（v3 只是警告）
+            next({ path: SUMMARY_PATH })
             NProgress.done()
             return
           }
@@ -104,10 +107,10 @@ router.beforeEach(async (to, _from, next) => {
 
           await permissionStore.generateAsyncRoutes(menuList)
 
-          if (isMobile() && to.name !== 'summary') {
+          if (isMobile() && to.name !== 'summary' && to.path !== SUMMARY_PATH) {
             const uriRoutes = permissionStore.uriRoutes || []
-            if (uriRoutes.includes('/record/summary')) {
-              next({ name: 'summary', replace: true })
+            if (uriRoutes.includes(SUMMARY_PATH)) {
+              next({ path: SUMMARY_PATH, replace: true })
               NProgress.done()
               return
             }

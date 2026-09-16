@@ -45,11 +45,16 @@ function getFirstVisibleChild(node: MenuItem) {
   )
 }
 
-function getFirstChildFullPath(item: MenuItem) {
+/**
+ * @param baseFullPath 该菜单自身的绝对路径（含所有祖先前缀）。
+ * 必须传绝对路径：vue-router 4+ 的相对 redirect 是按「跳转前所在页面」解析的，不是按父路由，
+ * 拼不全前缀就会跳到 /userTag/list 这种顶层路径上去。
+ */
+function getFirstChildFullPath(item: MenuItem, baseFullPath: string) {
   if (!Array.isArray(item.children)) return null
   let node = getFirstVisibleChild(item)
   if (!node) return null
-  let fullPath = resolveRoutePath(item.path, node.path)
+  let fullPath = resolveRoutePath(baseFullPath, node.path)
   while (node && Array.isArray(node.children) && node.children.length > 0) {
     const next = getFirstVisibleChild(node)
     if (!next) break
@@ -102,14 +107,22 @@ function convertToRoutes(
   menuList: MenuItem[],
   isRoot = true,
   parentHidden = false,
+  parentFullPath = '',
 ): AppRouteRecordRaw[] {
   const routes: AppRouteRecordRaw[] = []
   menuList.forEach((item) => {
     const hidden = isHiddenFlag(item.hidden)
     const hideSidebar = !hidden && !parentHidden && item.hideSidebar === true
     const nestedHidden = parentHidden || hidden
+    // 路由记录里子路由仍保持相对 path（vue-router 自己会按父记录拼），
+    // 但 redirect 必须是绝对路径，所以这里另外算一份带全部祖先前缀的 fullPath 往下传。
+    const fullPath = isHttpOrHttps(item.path)
+      ? item.path
+      : isRoot
+        ? toRootPath(item.path)
+        : resolveRoutePath(parentFullPath, item.path)
     const childrenRoutes = item.children
-      ? convertToRoutes(item.children, false, nestedHidden)
+      ? convertToRoutes(item.children, false, nestedHidden, fullPath)
       : []
 
     if (item.componentUri === 'Layout') {
@@ -122,13 +135,16 @@ function convertToRoutes(
         meta: buildMeta(item, hidden, hideSidebar),
         hidden,
       }
-      const firstChildPath = getFirstChildFullPath(item)
+      const firstChildPath = getFirstChildFullPath(item, fullPath)
       if (firstChildPath && !isExternal(firstChildPath)) route.redirect = firstChildPath
       if (childrenRoutes.length > 0) {
         childrenRoutes.forEach((child) => {
           const name = String(child.name || '')
-          if (CHILD_REDIRECT_MAP[name]) {
-            child.redirect = CHILD_REDIRECT_MAP[name]
+          const mapped = CHILD_REDIRECT_MAP[name]
+          // v2 写的是相对路径（'userTag/list'），由 vue-router 3 按父记录解析；
+          // vue-router 4+ 按当前页面解析，所以这里先拼成绝对路径。
+          if (mapped) {
+            child.redirect = resolveRoutePath(fullPath, mapped)
           }
         })
         route.children = childrenRoutes
@@ -150,7 +166,7 @@ function convertToRoutes(
     }
     if (childrenRoutes.length > 0) {
       viewRoute.children = childrenRoutes
-      const firstChildPath = getFirstChildFullPath(item)
+      const firstChildPath = getFirstChildFullPath(item, fullPath)
       if (firstChildPath && !isExternal(firstChildPath)) viewRoute.redirect = firstChildPath
     }
 
