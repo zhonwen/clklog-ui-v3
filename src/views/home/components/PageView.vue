@@ -16,7 +16,14 @@ const { next, isLatest } = useLatestOnly()
 const getVisitList = ref<Record<string, unknown>[]>([])
 
 function tableHeaderColor({ columnIndex }: { columnIndex: number }) {
-  return columnIndex === 0 ? 'text-align:left' : 'text-align:center'
+  // 必须返回对象，不能返回字符串。
+  // element-plus 会对 cell-style 的返回值做 Object.assign（table-body/styles-helper.mjs:42），
+  // 字符串会被展开成 { 0: 't', 1: 'e', ... } 再绑到 :style，Vue 随后去设 style['0']，
+  // 抛 “Failed to set an indexed property [0] on CSSStyleDeclaration”。
+  // 该单元格渲染失败后，列组件的 subTree.el 为 null，离开页面时再触发更新就报
+  // “Cannot read properties of null (reading 'type' / 'parentNode')”，并打断路由导航。
+  // element-ui 是直接 return，Vue 2 支持字符串 style，所以 v2 没有这个问题。
+  return columnIndex === 0 ? { textAlign: 'left' } : { textAlign: 'center' }
 }
 
 function getVisitUri() {

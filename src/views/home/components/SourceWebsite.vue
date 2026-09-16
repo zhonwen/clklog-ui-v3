@@ -16,7 +16,8 @@ const { next, isLatest } = useLatestOnly()
 const SourceWebsitelist = ref<Record<string, unknown>[]>([])
 
 function tableHeaderColor({ columnIndex }: { columnIndex: number }) {
-  return columnIndex === 0 ? 'text-align:left' : 'text-align:center'
+  // 必须返回对象，不能返回字符串，原因见 PageView.vue 同名函数的注释
+  return columnIndex === 0 ? { textAlign: 'left' } : { textAlign: 'center' }
 }
 
 function getSourceWebsite() {
