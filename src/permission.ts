@@ -142,3 +142,11 @@ router.beforeEach(async (to): Promise<GuardResult | boolean> => {
 router.afterEach(() => {
   NProgress.done()
 })
+
+// 导航期间抛出的异常（含组件渲染/更新错误，它们会被 finalizeNavigation 的 promise 链捕获）
+// 默认只打印一句 "Uncaught error during route navigation"，看不出是哪来的。
+// 这里显式接管，至少保证进度条不会卡住，并把原始错误打全。
+router.onError((error, to, from) => {
+  NProgress.done()
+  console.error('[router] 导航出错', { to: to.fullPath, from: from.fullPath }, error)
+})

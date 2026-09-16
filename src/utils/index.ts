@@ -24,7 +24,7 @@ export function debounce<Args extends unknown[], R>(
     }
   }
 
-  return function (...args: Args) {
+  const debounced = function (...args: Args) {
     lastArgs = args
     timestamp = Date.now()
     const callNow = immediate && !timeout
@@ -34,4 +34,16 @@ export function debounce<Args extends unknown[], R>(
     }
     return result
   }
+
+  /**
+   * 取消尚未触发的那一次调用。
+   * 组件卸载时必须调用，否则延迟回调会去写已卸载组件的 ref / emit 事件，
+   * 触发「已卸载组件的更新」，进而在 nextTick flush 时报错并打断路由导航。
+   */
+  debounced.cancel = () => {
+    if (timeout) clearTimeout(timeout)
+    timeout = null
+  }
+
+  return debounced
 }

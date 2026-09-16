@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowDown, ArrowUp, Download, Refresh, RefreshRight } from '@element-plus/icons-vue'
 import { blobDownloads } from '@/utils/localDownloadUtil'
@@ -110,6 +110,7 @@ const visitorType = ref('')
 const popflag = ref(false)
 const currentTime = ref<string[]>([])
 const commonData = ref<Record<string, unknown>>({})
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
 
 const disabledDate = (date: Date) => date.getTime() > Date.now()
 const pickerBeginOption = {
@@ -335,7 +336,7 @@ function resetApiList() {
 function refreshApiList() {
   loadingApi.value = true
   setTopFilterParams(commonData.value)
-  setTimeout(() => {
+  refreshTimer = setTimeout(() => {
     loadingApi.value = false
   }, 500)
 }
@@ -572,6 +573,13 @@ onMounted(() => {
   handleAdd()
   initCheckDayNum()
   localStorage.setItem('timeFlag', 'day')
+})
+
+onBeforeUnmount(() => {
+  // 切页面时组件会卸载，200ms 防抖若在卸载后触发，会写已卸载组件的 ref 并向父级 emit，
+  // 导致「已卸载组件的更新」错误，并打断正在进行的路由导航
+  emitDebounced.cancel()
+  if (refreshTimer) clearTimeout(refreshTimer)
 })
 </script>
 

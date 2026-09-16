@@ -16,6 +16,7 @@ import { useUserStore } from '@/stores/user'
 import { getPermissionRedirectPath, pickEntryPath } from '@/utils/menu'
 import { isNavigationFailure } from 'vue-router'
 import { useResizeHandler } from '@/layout/mixin/ResizeHandler'
+import { useLatestOnly } from '@/composables/useLatestOnly'
 
 useResizeHandler()
 
@@ -31,6 +32,7 @@ const usernameRef = ref()
 const passwordRef = ref()
 const loading = ref(false)
 const captchaLoading = ref(false)
+const { next, isLatest } = useLatestOnly()
 const dialogVisible = ref(false)
 const passwordType = ref<'password' | 'text'>('password')
 const capsTooltip = ref(false)
@@ -72,15 +74,20 @@ const otherQuery = computed(() => {
 })
 
 function getCaptcha() {
+  // 登录成功会立刻跳走并卸载本组件，在途的验证码请求若还回填 ref，
+  // 就是一次「已卸载组件的更新」，会在导航的 nextTick 里抛错并打断跳转
+  const token = next()
   captchaLoading.value = true
   getCaptchaImage()
     .then((res) => {
+      if (!isLatest(token)) return
       if (res.data && res.code == 200) {
         captchaObj.img = res.data.img ? `data:image/png;base64,${res.data.img}` : ''
         captchaObj.cid = res.data.cid || ''
       }
     })
     .finally(() => {
+      if (!isLatest(token)) return
       captchaLoading.value = false
     })
 }
