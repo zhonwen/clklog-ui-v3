@@ -96,7 +96,9 @@ export function markDynamicRoutes(names: string[]) {
   dynamicRouteNames = names
 }
 
-router.beforeEach((to, _from, next) => {
+// vue-router 4+ 的守卫用返回值表达结果，next() 已废弃（会打印 deprecated 警告）。
+// 这里只有副作用、不改变导航，所以不返回任何值即为放行。
+router.beforeEach((to) => {
   const appStore = useAppStore()
   const hideByMeta = shouldHideSidebarByMeta(to)
   const hideByPath = hideSidebarPathNames.includes(String(to.name || ''))
@@ -107,7 +109,6 @@ router.beforeEach((to, _from, next) => {
   if (appStore.sidebar.opened !== shouldOpen) {
     appStore.toggleSideBar(shouldOpen)
   }
-  next()
 })
 
 export default router

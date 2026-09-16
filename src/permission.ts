@@ -1,5 +1,6 @@
 import NProgress from 'nprogress'
 import { ElMessage } from 'element-plus'
+import type { RouteLocationNormalized, RouteLocationRaw } from 'vue-router'
 import router from '@/router'
 import { getToken } from '@/utils/auth'
 import getPageTitle from '@/utils/get-page-title'
@@ -22,139 +23,119 @@ const whiteList = [
   '/PermissionDenied',
 ]
 
+const errorPages = ['/Unauthorized', '/NoPermission', '/NoProjectPermission', '/PermissionDenied']
+
 const WIDTH = 992
 function isMobile() {
   return document.body.getBoundingClientRect().width - 1 < WIDTH
 }
 
-router.beforeEach(async (to, _from, next) => {
+/**
+ * 守卫的返回值约定（vue-router 4+ 风格，next() 已废弃）：
+ *   undefined / true → 放行
+ *   RouteLocationRaw → 重定向
+ */
+type GuardResult = RouteLocationRaw | undefined
+
+/** 移动端只允许停留在领导驾驶舱（v2 permission.js 的同名逻辑） */
+function decideMobileTarget(to: RouteLocationNormalized, uriRoutes: string[] | null): GuardResult {
+  if (!isMobile()) return undefined
+  if (to.name === 'summary' || to.path === SUMMARY_PATH) return undefined
+  const list = uriRoutes || []
+  // 按 path 跳转：菜单的 component 字段不一定叫 summary，
+  // vue-router 4+ 遇到不存在的 name 会直接抛错导致白屏（vue-router 3 只是警告）
+  return list.includes(SUMMARY_PATH) ? { path: SUMMARY_PATH } : { path: '/NoPermission' }
+}
+
+/** uriRoutes 路径白名单校验 + 兜底落地页。原来在两个分支里各抄了一遍（旧 I-17） */
+function decideUriTarget(to: RouteLocationNormalized, uriRoutes: string[] | null): GuardResult {
+  if (!uriRoutes) return undefined
+  if (isAllowedPath(uriRoutes, to.path)) return undefined
+  const canDefault = Array.isArray(uriRoutes) && uriRoutes.length > 0
+  if (canDefault && (to.path === '/' || to.path === '/index' || isProjectSwitching())) {
+    const fallback = pickFirstUriPath(uriRoutes) || uriRoutes[0]
+    return { path: fallback || '/NoPermission' }
+  }
+  return { path: '/NoPermission' }
+}
+
+router.beforeEach(async (to): Promise<GuardResult | boolean> => {
   if (to.path != CUSTOM_ANALYSIS_PATH && to.path != FUNNEL_ANALYSIS_PATH) {
     NProgress.start()
   }
   const permissionStore = usePermissionStore()
   document.title = getPageTitle(getVisibleRouteTitle(to, permissionStore.routes))
 
-  if (
-    to.path === '/Unauthorized' ||
-    to.path === '/NoPermission' ||
-    to.path === '/NoProjectPermission' ||
-    to.path === '/PermissionDenied'
-  ) {
-    next()
+  // 错误页直接放行，避免和下面的权限判断互相打架
+  if (errorPages.includes(to.path)) {
     NProgress.done()
-    return
+    return undefined
   }
 
   const userStore = useUserStore()
   const trackingStore = useTrackingStore()
-  const hasToken = getToken()
 
-  if (hasToken) {
-    if (to.path === '/login') {
-      const entry =
-        pickEntryPath(userStore.menuList, undefined, permissionStore.uriRoutes) ||
-        pickFirstUriPath(permissionStore.uriRoutes) ||
-        '/'
-      next({ path: entry })
-      NProgress.done()
-      return
-    } else {
-      const permissionRoles = permissionStore.routes && permissionStore.routes.length > 0
-      const permissionUriRoles = permissionStore.uriRoutes
-      if (permissionRoles) {
-        if (isMobile() && to.name !== 'summary' && to.path !== SUMMARY_PATH) {
-          const uriRoutes = permissionStore.uriRoutes || []
-          if (uriRoutes.includes(SUMMARY_PATH)) {
-            // 按 path 跳转：菜单的 component 字段不一定叫 summary，
-            // vue-router 4+ 遇到不存在的 name 会直接抛错导致白屏（v3 只是警告）
-            next({ path: SUMMARY_PATH })
-            NProgress.done()
-            return
-          }
-          next({ path: '/NoPermission' })
-          NProgress.done()
-          return
-        }
-        if (!permissionUriRoles) {
-          next()
-          return
-        }
-        if (!isAllowedPath(permissionUriRoles, to.path)) {
-          const switching = isProjectSwitching()
-          const canDefault = Array.isArray(permissionUriRoles) && permissionUriRoles.length > 0
-          if ((to.path === '/' && canDefault) || (to.path === '/index' && canDefault) || (switching && canDefault)) {
-            const fallback = pickFirstUriPath(permissionUriRoles) || permissionUriRoles[0]
-            next({ path: fallback || '/NoPermission' })
-            NProgress.done()
-            return
-          }
-          next({ path: '/NoPermission' })
-          NProgress.done()
-          return
-        }
-        next()
-      } else {
-        try {
-          const menuList = userStore.menuList
-          const hasMenu = hasVisibleMenu(menuList)
-          if (!hasMenu) {
-            const projectList = trackingStore.projectArray || []
-            const hasProjectList = Array.isArray(projectList) && projectList.length > 0
-            next({ path: hasProjectList ? '/NoProjectPermission' : '/Unauthorized' })
-            NProgress.done()
-            return
-          }
-
-          await permissionStore.generateAsyncRoutes(menuList)
-
-          if (isMobile() && to.name !== 'summary' && to.path !== SUMMARY_PATH) {
-            const uriRoutes = permissionStore.uriRoutes || []
-            if (uriRoutes.includes(SUMMARY_PATH)) {
-              next({ path: SUMMARY_PATH, replace: true })
-              NProgress.done()
-              return
-            }
-            next({ path: '/NoPermission', replace: true })
-            NProgress.done()
-            return
-          }
-
-          const uriRoutes = permissionStore.uriRoutes
-          if (!uriRoutes) {
-            next()
-            return
-          }
-          if (!isAllowedPath(uriRoutes, to.path)) {
-            const switching = isProjectSwitching()
-            const canDefault = Array.isArray(uriRoutes) && uriRoutes.length > 0
-            if ((to.path === '/' && canDefault) || (to.path === '/index' && canDefault) || (switching && canDefault)) {
-              const fallback = pickFirstUriPath(uriRoutes) || uriRoutes[0]
-              next({ path: fallback || '/NoPermission' })
-              NProgress.done()
-              return
-            }
-            next({ path: '/NoPermission' })
-            NProgress.done()
-            return
-          }
-          next({ ...to, replace: true })
-        } catch (error) {
-          userStore.resetToken()
-          ElMessage.error(typeof error === 'string' ? error : 'Has Error')
-          if (to.path === '/Unauthorized' || to.path === '/NoPermission') {
-            next(to.path)
-          } else {
-            next(`/login?redirect=${to.path}`)
-          }
-          NProgress.done()
-        }
-      }
-    }
-  } else if (whiteList.indexOf(to.path) !== -1) {
-    next()
-  } else {
-    next(`/login?redirect=${to.path}`)
+  if (!getToken()) {
+    if (whiteList.indexOf(to.path) !== -1) return undefined
     NProgress.done()
+    return `/login?redirect=${to.path}`
+  }
+
+  // 已登录时不允许停在登录页，直接送到落地页
+  if (to.path === '/login') {
+    const entry =
+      pickEntryPath(userStore.menuList, undefined, permissionStore.uriRoutes) ||
+      pickFirstUriPath(permissionStore.uriRoutes) ||
+      '/'
+    NProgress.done()
+    return { path: entry }
+  }
+
+  // 动态路由已生成
+  if (permissionStore.routes && permissionStore.routes.length > 0) {
+    const mobileTarget = decideMobileTarget(to, permissionStore.uriRoutes)
+    if (mobileTarget) {
+      NProgress.done()
+      return mobileTarget
+    }
+    const uriTarget = decideUriTarget(to, permissionStore.uriRoutes)
+    if (uriTarget) {
+      NProgress.done()
+      return uriTarget
+    }
+    return undefined
+  }
+
+  // 首次进入：用菜单生成动态路由
+  try {
+    const menuList = userStore.menuList
+    if (!hasVisibleMenu(menuList)) {
+      const projectList = trackingStore.projectArray || []
+      const hasProjectList = Array.isArray(projectList) && projectList.length > 0
+      NProgress.done()
+      return { path: hasProjectList ? '/NoProjectPermission' : '/Unauthorized' }
+    }
+
+    await permissionStore.generateAsyncRoutes(menuList)
+
+    const mobileTarget = decideMobileTarget(to, permissionStore.uriRoutes)
+    if (mobileTarget) {
+      NProgress.done()
+      return { ...(mobileTarget as object), replace: true } as RouteLocationRaw
+    }
+    const uriTarget = decideUriTarget(to, permissionStore.uriRoutes)
+    if (uriTarget) {
+      NProgress.done()
+      return uriTarget
+    }
+    // 路由是刚加进来的，重新走一次导航让它生效
+    return { ...to, replace: true }
+  } catch (error) {
+    userStore.resetToken()
+    ElMessage.error(typeof error === 'string' ? error : 'Has Error')
+    NProgress.done()
+    if (to.path === '/Unauthorized' || to.path === '/NoPermission') return to.path
+    return `/login?redirect=${to.path}`
   }
 })
 
