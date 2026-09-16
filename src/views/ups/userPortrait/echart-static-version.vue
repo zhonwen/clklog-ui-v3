@@ -17,6 +17,7 @@ import type { ECharts, EChartsOption } from 'echarts'
 import { CaretBottom, Close, Plus } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
+import Sortable from 'sortablejs'
 import { deleteportrait, getlistportrait } from '@/api/upsapi/groupportrait'
 import { useLatestOnly } from '@/composables/useLatestOnly'
 import { debounce } from '@/utils/index'
@@ -593,41 +594,35 @@ function handleDelete(item: StaticItem, _index: number) {
 }
 
 /**
- * v2 在 mounted 里用 sortablejs 让卡片可拖拽排序，v3 没有该依赖，
- * 改用原生 HTML5 draggable + dragstart / dragover / drop 等价实现。
- * v2 的 onEnd 是空函数，sortablejs 只搬了 DOM 节点、没同步数据数组；
- * 这里按「数组元素从 oldIndex 挪到 newIndex」落到数据上，并按新下标重绘图表
- * （本组件的数据是随机数，重绘后柱子高度会变，这是 v2 演示数据本身的性质）。
+ * 卡片拖拽：与 v2 mounted 里的 sortablejs 调用保持一致
+ *   new Sortable(this.$refs.example, { onStart(evt) {}, onEnd({ newIndex, oldIndex }) {} })
+ * v2 的 onStart / onEnd 都是空函数，sortablejs 只搬 DOM 节点、不回写数据数组，
+ * 所以 v2 的真实效果是「卡片任意位置都能拖、松手后视觉顺序变化、但数据顺序不变」——
+ * 列表一旦重新渲染即复原，保存/导出的仍是原顺序。这里照搬同样的行为。
+ * v2 组件销毁时没有 destroy 实例，v3 补上，避免路由切换后残留监听。
  */
-const dragIndex = ref<number | null>(null)
-
-function onDragStart(index: number) {
-  dragIndex.value = index
-}
-
-function onDrop(newIndex: number) {
-  const oldIndex = dragIndex.value
-  dragIndex.value = null
-  if (oldIndex === null || oldIndex === newIndex) return
-  const moved = portraitInfoList.value.splice(oldIndex, 1)[0]
-  if (!moved) return
-  portraitInfoList.value.splice(newIndex, 0, moved)
-  nextTick(() => {
-    statementStart()
-    contrastGroupInit()
-  })
-}
+const containerRef = ref<HTMLElement | null>(null)
+let sortable: Sortable | null = null
+// 注意：本文件 v2 的 new Sortable 没有传 handle，整张卡片任意位置都能起拖，故这里也不传。
 
 onMounted(() => {
   window.addEventListener('resize', onResize)
   const sidebar = document.getElementsByClassName('sidebar-container')[0]
   sidebar?.addEventListener('transitionend', onSidebarTransitionEnd)
+  if (containerRef.value) {
+    sortable = new Sortable(containerRef.value, {
+      onStart() {},
+      onEnd() {},
+    })
+  }
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
   const sidebar = document.getElementsByClassName('sidebar-container')[0]
   sidebar?.removeEventListener('transitionend', onSidebarTransitionEnd)
+  sortable?.destroy()
+  sortable = null
   echartsInstances.value.forEach((item) => item?.dispose())
   Object.values(contrastInstances.value).forEach((item) => item.dispose())
   echartsInstances.value = []
@@ -646,16 +641,14 @@ defineExpose({
 </script>
 
 <template>
-  <div class="container">
+  <div ref="containerRef" class="container">
     <div
       v-for="(item, index) in portraitInfoList"
       :key="index"
       class="blockArea"
       :style="blockAreaStyle"
-      @dragover.prevent
-      @drop.prevent="onDrop(index)"
     >
-      <div class="header" style="cursor: move" draggable="true" @dragstart="onDragStart(index)">
+      <div class="header" style="cursor: move">
         <div class="header_left">
           <span
             >{{ cardDisplays[index] }} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;的分布</span

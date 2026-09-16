@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Download } from '@element-plus/icons-vue'
+import { CaretBottom, Download } from '@element-plus/icons-vue'
 import Cookies from 'js-cookie'
+// v2 用 `<img src="@/assets/images/avator.png">`，这里显式 import 让 vite 出带 hash 的资源 URL
+import avatarImg from '@/assets/images/avator.png'
 import { getMenuList } from '@/api/user'
 import { getChannelListApi } from '@/api/trackingapi/channel'
 import { bus } from '@/utils/event-bus'
@@ -44,6 +46,72 @@ const isDemoEnv = window.globalConfig.is_clklog_demo_environment || false
 
 const logoSrc = './image/logo.png'
 const iconSrc = './image/icon.png'
+
+/**
+ * 项目下拉的自适应宽度，照搬 v2 Navbar.vue 的 updateSelectWidth()（v2:277-308）。
+ * v2 用一个离屏 span 实测所有项目显示名里最宽的一条，再 clamp 到 [128, 600]；
+ * v3 之前 selectWidth 固定 128，项目名一长就被截断。
+ * v2 用 canvas 量英文不准，所以坚持用真实 DOM 量，这里保持同样做法。
+ */
+const navbarRef = ref<HTMLElement | null>(null)
+
+function updateSelectWidth() {
+  const labels = (options.value || []).map((item) => item.projectDisplayName || '')
+  if (!labels.length) {
+    selectWidth.value = 128
+    return
+  }
+  const mirror = document.createElement('span')
+  mirror.style.cssText =
+    'position:absolute;left:-9999px;top:-9999px;visibility:hidden;white-space:nowrap;'
+  // v2 取的是 .custom_select .el-input__inner；element-plus 的 el-select 已不含 el-input，
+  // 文字落在 .el-select__wrapper 上，这里换成它来取字体
+  const inputEl = navbarRef.value?.querySelector('.custom_select .el-select__wrapper')
+  if (inputEl) {
+    mirror.style.font = window.getComputedStyle(inputEl).font
+  } else {
+    mirror.style.font =
+      '14px "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif'
+  }
+  document.body.appendChild(mirror)
+  let maxTextWidth = 0
+  labels.forEach((label) => {
+    mirror.textContent = label
+    maxTextWidth = Math.max(maxTextWidth, mirror.offsetWidth)
+  })
+  document.body.removeChild(mirror)
+  // 左侧 padding + 右侧下拉箭头区域。
+  // v2 直接写死 45（element-ui 的 .el-input__inner 是 padding: 0 15px + 约 30px 的箭头区）；
+  // element-plus 的 .el-select__wrapper 盒模型不同（padding + flex gap + suffix 三段），
+  // 沿用 45 会差几个像素，文字被 ellipsis 截掉，看着就是「宽度没适配」。
+  // 所以这里按真实 DOM 量，量不到再回退到 v2 的 45。
+  const extra = measureSelectExtra(inputEl)
+  const minWidth = 128
+  const maxWidth = 600
+  selectWidth.value = Math.min(maxWidth, Math.max(minWidth, Math.ceil(maxTextWidth) + extra))
+}
+
+/** 下拉框里除文字以外要占掉的横向空间：左右内边距 + flex gap + 右侧箭头 */
+function measureSelectExtra(wrapper: Element | null | undefined): number {
+  if (!wrapper) return 45
+  const cs = window.getComputedStyle(wrapper)
+  const padding = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0)
+  const gap = parseFloat(cs.columnGap) || 0
+  const suffix = wrapper.querySelector('.el-select__suffix')
+  const suffixWidth = suffix ? suffix.getBoundingClientRect().width : 0
+  // +2 是留给亚像素取整，否则偶尔仍会出现一个字的省略号
+  const extra = Math.ceil(padding + gap + suffixWidth) + 2
+  return extra > 0 ? extra : 45
+}
+
+// v2 是 watch options（deep + immediate）后 $nextTick 再量
+watch(
+  options,
+  () => {
+    nextTick(() => updateSelectWidth())
+  },
+  { deep: true, immediate: true },
+)
 
 function initDate() {
   const date = new Date()
@@ -225,6 +293,10 @@ onMounted(() => {
   }
   isOrNotRoute(route)
   showDownLoad(route)
+  // 挂载后再量一次：immediate 的那次可能跑在下拉框真正渲染出来之前，只能用兜底字体估算；
+  // 字体文件晚于首帧加载完时宽度也会变，fonts.ready 后补一次。
+  void nextTick(() => updateSelectWidth())
+  void document.fonts?.ready?.then(() => updateSelectWidth())
   try {
     userName.value = JSON.parse(Cookies.get('userInfo') || '{}').username || ''
   } catch {
@@ -289,7 +361,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="navbar">
+  <div ref="navbarRef" class="navbar">
     <div v-if="device == 'desktop'" class="burying_point">
       <div style="display: flex; align-items: center">
         <div class="logoFlag">
@@ -326,16 +398,22 @@ onUnmounted(() => {
           <el-icon style="font-size: 14px"><Download /></el-icon>下载
         </div>
         <div class="dataTime">{{ dateTime }}&nbsp;&nbsp;{{ dateWeek }}</div>
-        <el-dropdown class="avatar-container">
+        <el-dropdown class="avatar-container right-menu-item hover-effect">
           <div class="avatar-wrapper">
-            <el-icon><ArrowDown /></el-icon>
-            <span class="user-name">{{ userName }}</span>
+            <img :src="avatarImg" class="user-avatar" alt="" />
+            <el-icon class="caret-bottom"><CaretBottom /></el-icon>
           </div>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item>{{ userName }}</el-dropdown-item>
-              <el-dropdown-item v-if="!isDemoEnv" @click="modifyPsw">修改密码</el-dropdown-item>
-              <el-dropdown-item @click="logout">退出</el-dropdown-item>
+              <el-dropdown-item>
+                <span style="display: block">{{ userName }}</span>
+              </el-dropdown-item>
+              <el-dropdown-item v-if="!isDemoEnv" @click="modifyPsw">
+                <span style="display: block">修改密码</span>
+              </el-dropdown-item>
+              <el-dropdown-item @click="logout">
+                <span style="display: block">退出</span>
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -357,12 +435,17 @@ onUnmounted(() => {
           :value="item.projectName"
         />
       </el-select>
-      <div class="right-menu">
-        <el-dropdown trigger="click">
-          <span class="user-name">{{ userName }}</span>
+      <div class="right-menu mobile-right-menu">
+        <el-dropdown class="avatar-container right-menu-item hover-effect" trigger="click">
+          <div class="avatar-wrapper">
+            <img :src="avatarImg" class="user-avatar" alt="" />
+            <el-icon class="caret-bottom"><CaretBottom /></el-icon>
+          </div>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item @click="logout">退出</el-dropdown-item>
+              <el-dropdown-item @click="logout">
+                <span style="display: block">退出</span>
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -415,6 +498,27 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+// 项目选择框，来源 v2 layout/components/Navbar.vue:538-562。
+// v2 那段里真正命中的只有 `.el-input__inner { border: none }`
+//（其余三条写成了 `.custom_select .el-select .el-input__inner`，
+//  而 .custom_select 本身就是 .el-select，内部没有第二层 el-select，选不中），
+// 所以 v2 的实际效果就是「项目下拉无边框、看起来像一段纯文本」。
+// element-plus 2.5 起 el-select 不再用 el-input，边框改为 .el-select__wrapper 的 inset box-shadow，
+// hover / focus 各有一条覆盖规则，这里三态一起去掉才能等价。
+.custom_select {
+  :deep(.el-select__wrapper),
+  :deep(.el-select__wrapper.is-focused),
+  :deep(.el-select__wrapper.is-hovering:not(.is-focused)) {
+    box-shadow: none;
+  }
+
+  // 对齐 v2 element-ui 输入框的盒子：高 40px、左内边距 15px
+  :deep(.el-select__wrapper) {
+    min-height: 40px;
+    padding-left: 15px;
+  }
+}
+
 .NoClkSelect {
   position: absolute;
   inset: 0;
@@ -422,10 +526,13 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
+// 来源 v2 Navbar.vue:600-604
 .right-menu {
   display: flex;
   align-items: center;
-  margin-right: 16px;
+  height: 100%;
+  line-height: 50px;
+  margin-right: 7px;
 }
 
 // 顶栏「下载」按钮，来源 v2 layout/components/Navbar.vue:490
@@ -442,23 +549,71 @@ onUnmounted(() => {
   text-align: center;
 }
 
+// 来源 v2 Navbar.vue:606-612
 .dataTime {
   font-size: 13px;
+  font-weight: 400;
+  line-height: 14px;
   color: #656d92;
-  margin-right: 24px;
+  margin-right: 29px;
 }
 
-.avatar-wrapper,
-.user-name {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+// 默认头像及其下拉，来源 v2 Navbar.vue:614-654。
+// v3 之前把头像换成了「ArrowDown 图标 + 用户名文字」，与 v2 的圆角头像差异明显，这里改回 v2 的结构。
+.user-avatar {
   cursor: pointer;
-  color: #4d4d4d;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
 }
 
+.right-menu-item {
+  display: inline-block;
+  height: 100%;
+  font-size: 18px;
+  color: #5a5e66;
+  vertical-align: text-bottom;
+
+  &.hover-effect {
+    cursor: pointer;
+    transition: background 0.3s;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.025);
+    }
+  }
+}
+
+.avatar-container {
+  margin-right: 30px;
+
+  .avatar-wrapper {
+    margin-top: 5px;
+    left: 2px;
+    top: 0;
+    position: relative;
+
+    // v2 是字体图标 `<i class="el-icon-caret-bottom">`，EP 无此类，换成 CaretBottom 组件，定位照搬
+    .caret-bottom {
+      cursor: pointer;
+      position: absolute;
+      right: -20px;
+      top: 25px;
+      font-size: 12px;
+    }
+  }
+}
+
+// v2 移动端是 justify-content: flex-start + right-menu 绝对定位贴右（Navbar.vue:54-77）
 .mobile-bar {
   align-items: center;
+  justify-content: flex-start;
+  line-height: 50px;
+}
+
+.mobile-right-menu {
+  position: absolute;
+  right: 0;
 }
 
 .mobile-icon {

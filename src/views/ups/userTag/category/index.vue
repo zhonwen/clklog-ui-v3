@@ -494,12 +494,24 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
-:deep(.el-input__inner) {
-  height: 28px;
-  line-height: 28px;
+/*
+ * v2 是 `.el-input--medium .el-input__inner { height: 28px; line-height: 28px }`。
+ * element-ui 的 .el-input__inner 本身就是那个带边框的盒子，改它的 height 就等于改整个输入框；
+ * element-plus 拆成了 .el-input（外层，高度取 --el-input-height）+ .el-input__inner（里面的裸 input，
+ * 高度是 --el-input-inner-height），所以照搬 .el-input__inner 的 height 撑不动外层，
+ * 输入框仍是 EP 默认的 32px —— 这就是「分类显示名」输入框和 v2 对不上的原因。
+ * EP 的正确写法是改变量。
+ */
+:deep(.el-input) {
+  --el-input-height: 28px;
 }
 
+/*
+ * v2 是 `.el-form-item--medium .el-form-item__label { line-height: 30px }`，没有设 height，
+ * 所以标签高度就等于 30px 的行高；element-plus 额外给了 `height: 32px`，只改 line-height 会留下 32px 的盒子。
+ */
 :deep(.el-form-item__label) {
+  height: auto;
   line-height: 30px;
   font-size: 13px;
 }
@@ -591,5 +603,11 @@ onMounted(() => {
   color: #2c7be5;
   border: 1px solid #2c7be5;
   margin-bottom: 15px;
+  // v2 全局注册的是 element-ui 的 medium 尺寸（main.js: Vue.use(Element, { size: "medium" })），
+  // 按钮是 padding: 10px 20px + line-height: 1 → 36px 高；
+  // element-plus 没有 medium，v3 注册的是 default —— height: 32px / padding: 8px 15px，明显小一圈。
+  // 这里先按 v2 的数值还原本页的「新建分类」按钮；全局尺寸的统一见《05 文档》第 11 节的待拍板项。
+  height: 36px;
+  padding: 10px 20px;
 }
 </style>

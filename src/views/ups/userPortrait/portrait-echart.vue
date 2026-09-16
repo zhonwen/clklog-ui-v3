@@ -1,5 +1,5 @@
 <template>
-  <div class="container">
+  <div ref="containerRef" class="container">
     <div
       class="blockArea"
       :style="blockAreaStyle"
@@ -307,6 +307,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { ComponentPublicInstance } from 'vue'
 import { useRoute } from 'vue-router'
+import Sortable from 'sortablejs'
 import { ElMessage } from 'element-plus'
 import type { TabsPaneContext } from 'element-plus'
 import * as echarts from 'echarts'
@@ -1672,17 +1673,33 @@ function handleEdite(item: EchartPortraitItem) {
   emit('editPortraitInfo', newItem)
 }
 
+/**
+ * 卡片拖拽：与 v2 mounted 里的 sortablejs 调用保持一致
+ *   new Sortable(this.$refs.example, { handle: '.handle', onStart(evt) {}, onEnd({ newIndex, oldIndex }) {} })
+ * v2 的 onStart / onEnd 都是空函数，sortablejs 只搬 DOM 节点、不回写数据数组，
+ * 所以 v2 的真实效果是「按住卡片头部（.handle）能拖、松手后视觉顺序变化、但数据顺序不变」——
+ * 列表一旦重新渲染即复原，保存/导出的仍是原顺序。这里照搬同样的行为。
+ * v2 组件销毁时没有 destroy 实例，v3 补上，避免路由切换后残留监听。
+ */
+const containerRef = ref<HTMLElement | null>(null)
+let sortable: Sortable | null = null
+
 onMounted(() => {
   // v2 在每个 drawDevice_* 里都挂一次 resize（同一个 handler 会被去重），这里统一挂一次
   window.addEventListener('resize', handleResize)
-  // v2 这里还用 sortablejs 让画像信息块可拖拽（handle: '.handle'），
-  // v3 没有 sortablejs 依赖；v2 的 onStart / onEnd 都是空函数，拖拽不改动任何数据，
-  // 加上列表 v-for 用的是 :key="index"，真去重排数组会让 echarts 实例和 dom 错位，
-  // 所以这里做成「保留列表但不可拖拽」的降级实现（.handle 与 cursor: move 样式保留）。
+  if (containerRef.value) {
+    sortable = new Sortable(containerRef.value, {
+      handle: '.handle',
+      onStart() {},
+      onEnd() {},
+    })
+  }
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
+  sortable?.destroy()
+  sortable = null
   timers.forEach((id) => window.clearTimeout(id))
   timers.clear()
   // useChart 内置的卸载 dispose，这里手动补上

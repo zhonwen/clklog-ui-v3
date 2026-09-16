@@ -770,7 +770,9 @@ onBeforeUnmount(() => {
   .checkContent {
     padding: 15px 20px;
     white-space: nowrap;
-    position: relative;
+    // v2 是 position: fixed（Navbar 下方吸顶，滚动时不跟着走），v3 之前写成了 relative，
+    // 筛选条会随内容一起滚走。外层 .documentation-container 的 min-height 就是给它占位用的。
+    position: fixed;
     width: 100%;
     min-height: 40px;
     z-index: 500;

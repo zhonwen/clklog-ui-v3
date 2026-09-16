@@ -196,17 +196,26 @@ onMounted(() => {
   }
 
   .el-textarea__inner {
-    border: 1px solid #fff;
-    border-bottom: 1px solid #dcdfe6;
-  }
-
-  .el-textarea__inner {
     resize: none;
   }
 
-  .el-input__inner {
-    border: 1px solid #fff;
-    border-bottom: 1px solid #dcdfe6;
+  /*
+   * v2 是「四边白边框 + 下边框 #dcdfe6」，净效果就是只看得见一条下边线：
+   *   .el-textarea__inner / .el-input__inner { border: 1px solid #fff; border-bottom: 1px solid #dcdfe6 }
+   * element-plus 把输入框的边框换成了 inset box-shadow —— 输入框在 .el-input__wrapper 上、
+   * 文本域在 .el-textarea__inner 上，而且 hover / focus 各有一条覆盖规则，
+   * 照搬 border 完全落空，所以 v3 显示的是一圈完整边框。
+   * 这里用 `0 -1px 0 0 <色> inset`（内阴影向上偏移 1px，可见的一条正好压在底边）等价还原，
+   * 好处是不像 border 那样改变盒子尺寸；三态都覆盖，和 v2 一样 focus 时也不变色。
+   */
+  .el-input__wrapper,
+  .el-input__wrapper:hover,
+  .el-input__wrapper.is-focus,
+  .el-textarea__inner,
+  .el-textarea__inner:hover,
+  .el-textarea__inner:focus {
+    box-shadow: 0 -1px 0 0 #dcdfe6 inset;
+    border-radius: 0;
   }
 }
 

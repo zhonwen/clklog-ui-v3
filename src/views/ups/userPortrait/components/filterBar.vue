@@ -185,6 +185,33 @@ onMounted(() => {
   font-size: 13px;
 }
 
+/*
+ * 下面四条是补 v2 同一个 ::v-deep 块里被漏掉 / 迁成死规则的部分
+ * （v2 src/views/ups/userPortrait/components/filterBar.vue，与 userTag 的 filterBar 是同一串）。
+ * element-plus 没有 --medium 后缀，且输入框高度移到了外层 .el-input 的 --el-input-height 上，
+ * 照搬 `.el-input--medium .el-input__inner { height: 30px }` 撑不动外层，输入框会停在 EP 默认的 32px。
+ */
+:deep(.el-cascader) {
+  line-height: 30px;
+  margin-right: 20px;
+
+  .el-input {
+    width: 150px;
+  }
+}
+
+:deep(.custom_input .el-input) {
+  width: 250px !important;
+}
+
+:deep(.el-input) {
+  --el-input-height: 30px;
+}
+
+:deep(.el-button) {
+  padding: 0 20px;
+}
+
 :deep(.single_select .el-input__inner) {
   border-radius: 0px;
   border-top-width: 0px;

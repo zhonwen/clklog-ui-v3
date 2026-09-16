@@ -37,9 +37,27 @@
       width: 100% !important;
     }
 
+    // 菜单图标尺寸，来源 v2 layout/components/Sidebar/SidebarItem.vue 的 scoped 样式
+    // （`#app .sidebar-container .svg-icon { width:22px; height:22px; ... }`）。
+    // v2 里这条的选择器权重高于 styles/sidebar.scss 的 `.svg-icon { margin-right: 16px }`，
+    // 最终生效的就是下面这一组值；v3 之前漏了这块，图标只剩 SvgIcon 自带的 1em（14px），所以偏小。
+    // 放在全局而不是 SidebarItem 的 scoped 块里：v3 的 Item.vue 是多根 fragment，
+    // scoped id 不一定能透传到 SvgIcon 的根节点，写全局更稳。
+    // 注意：v2 那条规则里还有 `position: relative; top: 0; transform: translate(0, 25%)`，
+    // 这里**不能照抄**。element-ui 的 .el-menu-item / .el-submenu__title 是 display: block，
+    // 图标按行内基线排版，那个 25% 是用来往下怼、让它和文字看齐的补偿；
+    // element-plus 改成了 display: flex + align-items: center，图标本来就已经垂直居中，
+    // 再平移 25%（22px × 25% ≈ 5.5px）反而会掉下去，看着就是「和菜单标题没对齐」。
     .svg-icon {
-      margin-right: 8px;
-      vertical-align: middle;
+      width: 22px;
+      height: 22px;
+      margin-right: 14px;
+    }
+
+    // 同上，来源 v2 SidebarItem.vue 的 `::v-deep .el-submenu__icon-arrow { right: 15px }`
+    // （EP 默认是 var(--el-menu-base-level-padding) = 20px）
+    .el-sub-menu__icon-arrow {
+      right: 15px;
     }
 
     .el-sub-menu__title:hover,

@@ -205,7 +205,7 @@ onMounted(() => {
             <div class="title filterbar-tab-right" style="line-height: 30px">标签分类:</div>
             <el-tree-select
               v-model="tagType"
-              class="filterbar-tab-right"
+              class="filterbar-tab-right tag-tree-select"
               style="font-size: 13px; color: #606266; font-weight: 400px; z-index: 99999"
               :data="tagTree"
               :props="treeSelectProps"
@@ -336,11 +336,21 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 // v2 这里是 vue-treeselect 的一整套 .vue-treeselect__* 覆盖样式，
-// v3 换成 el-tree-select，按同样的数值重写
+// v3 换成 el-tree-select，按同样的数值重写。
+//
+// 宽度必须写在**根元素**上，不能只写在 .el-select__wrapper 上：
+// v2 的 `.vue-treeselect__control { width: 150px }`，其根元素 .vue-treeselect 没有宽度、
+// 作为 flex item 收缩到内容宽，整体就是 150px；
+// 而 element-plus 的 el-tree-select 底层是 el-select，根元素是 `width: var(--el-select-width)` = **100%**。
+// 只把 150px 写在 wrapper 上，外层依旧撑满，在 .first_line 这个 flex 行里会吃掉全部剩余宽度 ——
+// 可见的框只有 150px，右边留一大片空白（「标签分类」和「数据类型」之间那个大空档就是这么来的）。
+.tag-tree-select {
+  width: 150px;
+}
+
 :deep(.el-select__wrapper) {
   min-height: 30px;
   line-height: 30px;
-  width: 150px;
 }
 
 :deep(.el-select__placeholder) {
@@ -348,18 +358,37 @@ onMounted(() => {
   color: #4d4d4d;
 }
 
-:deep(.el-cascader .el-input) {
-  width: 150px;
+// v2 是 `.el-cascader--medium { line-height: 30px; margin-right: 20px }` +
+// `.el-cascader .el-input { width: 150px }`。element-plus 没有 --medium 后缀，
+// v3 之前只迁了宽度，级联框和后面的控件就贴在一起了
+:deep(.el-cascader) {
+  line-height: 30px;
+  margin-right: 20px;
+
+  .el-input {
+    width: 150px;
+  }
 }
 
 :deep(.custom_input .el-input__inner) {
   font-size: 11px;
 }
 
+// v2 是 `.custom_input .el-input--medium .el-input__inner { width: 250px !important }`，
+// v3 之前只迁了 font-size，搜索框宽度没跟上
+:deep(.custom_input .el-input) {
+  width: 250px !important;
+}
+
 :deep(.el-input__inner) {
   font-size: 13px;
-  height: 30px;
-  line-height: 30px;
+}
+
+// v2 是 `.el-input--medium .el-input__inner { height: 30px; line-height: 30px }`。
+// element-plus 的输入框高度在外层 .el-input（--el-input-height），
+// 写在 .el-input__inner 上撑不动外层，输入框会停在 EP 默认的 32px
+:deep(.el-input) {
+  --el-input-height: 30px;
 }
 
 :deep(.el-button) {

@@ -249,10 +249,15 @@ function mapContainerEvent(data: unknown, cityList: MapCity[], maxValue: number)
 
       containLabel: true,
     },
-    geo: {
-      aspectScale: 0.75,
-      zoom: 1.1,
-    },
+    /*
+     * v2 这里有一个 `geo: { aspectScale: 0.75, zoom: 1.1 }`，**故意不迁**：
+     * 它没有 map 属性。echarts 4 遇到这种 geo 只打一条 "Map not exists" 警告就跳过，
+     * 所以 aspectScale / zoom 在 v2 里根本没生效，图是 series(type:"map") 按默认参数画的。
+     * echarts 6 则会直接抛 TypeError（getFilledRegions 读 undefined.regions），
+     * setOption 整个中断 —— 表现就是「弹框里的省份地图一片空白」。
+     * 补 map:"cityCode" 会让 aspectScale/zoom 真的生效并多画一层，反而和 v2 不一样；
+     * 直接删掉才是与 v2 渲染结果等价的写法。
+     */
     tooltip: {
       formatter: (params: unknown) => {
         const p = params as { name?: string; value?: unknown; data?: { visitCountRate?: unknown } }

@@ -499,11 +499,22 @@ function getAreaProvince(params: Record<string, unknown>) {
 }
 
 function handleClick(pane: TabsPaneContext) {
+  /*
+   * 这里必须以「被点击的 pane」为准，不能读 activeMap：
+   * element-ui 的 handleTabClick 是「先 setCurrentName 再 emit('tab-click')」，
+   * element-plus 2.14 反了过来——
+   *   handleTabClick = (tab, tabName) => { emit('tabClick', tab); setCurrentName(tabName, true) }
+   * 所以回调里 activeMap 还是上一个 tab。首次点「按国家」时 activeMap 仍是 'province'，
+   * getAreaProvince 会去请求省份数据，世界地图不画；再点一次才对
+   * ——这就是「切换按国家初次加载不出世界地图，重复操作才出来」。
+   */
+  const name = String(pane.props?.name ?? pane.paneName ?? activeMap.value)
+  activeMap.value = name
   // v2 是 this.$router.push({ path: "regional", query: {...} })，相对路径解析后就是当前页，
   // v3 直接用当前 path，避免 vue-router 4 下相对路径解析差异
   void router.push({ path: route.path, query: { areaOption: pane.index } })
   getAreaProvince(commonParams.value)
-  emit('customEvent', activeMap.value)
+  emit('customEvent', name)
 }
 
 /** 两张地图不走 useChart（容器在 el-tab-pane 里按需渲染），resize 与 dispose 在这里自管 */

@@ -72,10 +72,13 @@ a {
   box-sizing: inherit;
 }
 
+// 刷新 / 重置按钮，来源 v2 src/styles/index.scss:66-73。
+// v2 是 position: fixed + right: 20px —— 贴在视口右侧，和吸顶的筛选条一起停在 Navbar 下方；
+// v3 之前改成了 relative + margin-left: auto，按钮会跟着筛选条内容流走位。
 .tabBarBtn {
   display: flex;
-  position: relative;
-  margin-left: auto;
+  position: fixed;
+  right: 20px;
   min-width: 150px;
   z-index: 1000;
 }
@@ -93,6 +96,17 @@ a {
 .tabBarBtn .reset {
   width: 70px;
   margin-left: 10px;
+}
+
+// 单选按钮组（按时/按日/按周/按月 这类）的内边距。
+// v2 用 size="mini"，element-ui 的 .el-radio-button--mini 是 padding: 7px 15px；
+// v3 换成 element-plus 的 size="small"，默认是 padding: 5px 11px。
+// 组件里普遍还会把 .el-radio-button__inner 的 height 锁成 30px，
+// inner 是 inline-block + box-sizing: border-box + line-height: 1，
+// 上内边距小 2px 文字就整体上浮，看起来没居中；左右少 4px 按钮也更窄。
+// 这里统一回 v2 的取值；个别组件自己 :deep() 覆盖过 padding 的（如 filterBar 的 9px 15px）权重更高，不受影响。
+.el-radio-button--small .el-radio-button__inner {
+  padding: 7px 15px;
 }
 
 // 数字输入框宽度，来源 v2 src/styles/index.scss:48
@@ -195,6 +209,19 @@ a {
 // 指标下拉的无边框样式，来源 v2 src/styles/element-ui.scss:145
 // 注意：element-plus 把边框移到了 .el-input__wrapper，这里同时兼容两种结构
 .appli-select-style {
+  // element-plus 2.5 起 el-select 不再复用 el-input，边框是 .el-select__wrapper 的 inset box-shadow，
+  // 且 hover / focus 各有一条覆盖规则；只写 .el-input__wrapper 的话这个下拉仍然带边框，
+  // 外层「指标」方框里就会出现里外两层框（v2 只有外层那一层）。
+  .el-select__wrapper,
+  .el-select__wrapper.is-focused,
+  .el-select__wrapper.is-hovering:not(.is-focused) {
+    box-shadow: none !important;
+    background-color: transparent !important;
+    font-size: 12px !important;
+    min-height: 28px !important;
+    padding-left: 10px !important;
+  }
+
   .el-input__wrapper {
     box-shadow: none !important;
     background-color: transparent !important;
@@ -256,6 +283,128 @@ a {
 
 .public_border_color {
   border: 1px solid #d8e2ef;
+}
+
+// 组合框内部的下拉（外层 .warry_select 之类的容器自带边框）。
+// v2 在各个 filterBar 的 scoped 里都写了同一串：
+//   ::v-deep .single_select .el-input__inner {
+//     border-*-width: 0; border-bottom: 1px solid #acb2ba; ... border-bottom-width: 0; ... }
+// 注意那串最后又用 `border-bottom-width: 0` 收尾，**净效果是完全无边框** + 透明底 + 12px。
+// element-plus 的 el-select 不再渲染 el-input，边框是 .el-select__wrapper 的 inset box-shadow，
+// 所以各组件里照搬的 .el-input__inner 规则全部落空 —— 下拉自带一圈边框，和外层容器叠成双层。
+// 这里统一按 EP 的结构补回，三态都要覆盖（hover / focus 各有一条 EP 规则）。
+// 不迁 v2 的 width: 100px：v2 是设在内层 input 上，EP 的 wrapper 会撑满 el-select，
+// 照搬会把各处 el-select 的行内宽度（150px 等）一起改掉。
+.single_select {
+  .el-select__wrapper,
+  .el-select__wrapper.is-focused,
+  .el-select__wrapper.is-hovering:not(.is-focused) {
+    box-shadow: none;
+    background-color: transparent;
+    border-radius: 0;
+    font-size: 12px;
+    padding-left: 10px;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * 以下整块来源 v2 src/styles/components/element-unifystyle.scss 与
+ * element-unify-style.scss（两个文件都在 v2 的 styles/index.scss 里全局引入）。
+ * v3 迁移时漏掉了表格这部分，导致表头字号/字重、行高、hover 底色、边框色都和 v2 不一致。
+ * ------------------------------------------------------------------ */
+
+// 表头：v2 是 13px / 400。element-plus 的 .el-table thead 只设了 color
+//（--el-table-header-text-color 解析出来同样是 #909399，颜色本身没差），
+// 字号走 .el-table 的 14px，字重则吃浏览器给 <th> 的默认 bold(700)——
+// 所以 v3 的表头比 v2 又大又粗，看着像换了颜色。
+.el-table thead {
+  font-size: 13px !important;
+  font-weight: 400;
+}
+
+// v2 是 16px；element-plus 默认 23px
+.el-table .cell {
+  line-height: 16px;
+}
+
+// 排序箭头，来源 v2 element-unifystyle.scss:17-25
+.el-table .caret-wrapper {
+  height: 15px;
+}
+
+.el-table .sort-caret.descending {
+  bottom: -4px;
+}
+
+.el-table .sort-caret.ascending {
+  top: -3px;
+}
+
+// 行 hover 底色与边框色，来源 v2 element-unify-style.scss:5-16
+// element-plus 的 hover 规则选择器是 td.el-table__cell，v2 写的 td 依然能命中，且这里带 !important
+.el-table--enable-row-hover .el-table__body tr:hover > td {
+  background-color: #eef4fd !important;
+}
+
+.el-table--border {
+  border-color: #d8e2ef !important;
+}
+
+.el-table::before,
+.el-table--group::after,
+.el-table--border::after {
+  content: '';
+  position: absolute;
+  background-color: #d8e2ef;
+  z-index: 1;
+}
+
+// 单选统一成深蓝，来源 v2 element-unify-style.scss:20-28
+.el-radio {
+  color: #194580;
+}
+
+.el-radio__input.is-checked + .el-radio__label {
+  color: #194580 !important;
+}
+
+.el-radio-button__inner {
+  color: #194580;
+}
+
+.el-radio-button__original-radio:disabled + .el-radio-button__inner {
+  border-color: #d8e2ef;
+}
+
+/* ------------------------------------------------------------------
+ * el-dialog 盒模型兼容：element-ui 的 .el-dialog 自身没有 padding，
+ * 内边距分别落在 __header(20px 20px 10px) / __body(30px 20px) / __footer(10px 20px 20px)；
+ * element-plus 把 padding 提到了 .el-dialog 自己身上（--el-dialog-padding-primary，20px），
+ * __body / __footer 反而不带 padding。
+ *
+ * 本项目 48 个弹窗全部照搬自 v2，其中 37 个把 __header / __body 的 padding 改写成了 0 或自定义值，
+ * 在 element-plus 下就只去掉了内层、留下外层那圈 20px —— 表现是弹窗内容四周多出一道白边，
+ * 背景色（如省份下钻弹窗的 #eef4fd）铺不到边、圆角和标题栏位置都和 v2 对不上。
+ * 这里把盒模型整体还原成 element-ui 的分布，各弹窗里已有的 v2 覆盖就能照常生效。
+ *
+ * 选择器刻意都保持单类名（0,1,0）：低于组件内 :deep(...) 编译出的 [data-v-x] .el-dialog__body（0,2,0），
+ * 组件自己的覆盖依然优先；同时因为 index.scss 在 element-plus/dist/index.css 之后引入，
+ * 与 element-plus 同权重的规则由本文件胜出。
+ * ------------------------------------------------------------------ */
+.el-dialog {
+  padding: 0;
+}
+
+.el-dialog__header {
+  padding: 20px 20px 10px;
+}
+
+.el-dialog__body {
+  padding: 30px 20px;
+}
+
+.el-dialog__footer {
+  padding: 10px 20px 20px;
 }
 
 .public_font_color {
