@@ -2,18 +2,20 @@
 /**
  * 地域分析-地图 + 省份榜单（v2 views/visitor-analysis/chart-component/regional-analysis-show.vue）。
  *
- * ⚠️ 地图部分降级说明（迁移报告里也有）：
- * v2 用的是 echarts 4，地图数据来自 `echarts/map/json/china.json`、`echarts/map/js/world.js`
- * 和 `@/utils/world.json`。echarts 5 起已经移除内置地图，v3 目前既没有接入 GeoJSON，
- * 也没有 world.json。为了不让整页崩，这里把 `showScatterInGeo` / `worldChartEvent`
- * 做成空实现：接口照常请求、省份榜单表格照常渲染、地图容器保留占位，
- * 等接入 registerMap 之后把绘制逻辑补回来即可。
+ * 地图数据来源：echarts 5+ 移除了内置地图，改为运行时 registerMap。
+ * GeoJSON 取自 echarts 4.2.1 包内（与 v2 同源），放在 `public/map/{china,world}.json`，
+ * 由 `@/utils/geo-map` 的 ensureGeoMap() 按需 fetch + 注册，详见该文件注释。
+ * 国家名中英映射仍用 v2 的 `@/utils/world.json`（namemap + dataArr）。
  */
-import { onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import * as echarts from 'echarts'
+import type { EChartsOption } from 'echarts'
 import type { TabsPaneContext } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { getAreaCountryListApi, getAreaProvinceListApi } from '@/api/trackingapi/area'
 import { copyObj } from '@/utils/copy'
+import { ensureGeoMap } from '@/utils/geo-map'
+import worldData from '@/utils/world.json'
 import { useLatestOnly } from '@/composables/useLatestOnly'
 
 interface ProvinceRow {
@@ -45,6 +47,17 @@ interface MapProvince {
   name: string
   value: number
   rate?: number
+}
+
+/** world.json 的 dataArr 元素，合并接口数据后喂给世界地图 series.data */
+interface WorldItem {
+  name?: string
+  value?: number
+  visitCountRate?: number
+  pv?: number
+  pvRate?: number
+  uv?: number
+  uvRate?: number
 }
 
 interface HostOption {
@@ -97,6 +110,9 @@ const hostList: HostOption[] = [
   },
   { label: 'IP数', value: 'IP数', id: 'ipCount', rate: 'ipCountRate' },
 ]
+
+/** 世界地图数据：world.json 的 dataArr 与接口结果合并后的结果 */
+const newWorldList = ref<WorldItem[]>([])
 
 const provinceList = ref<MapProvince[]>([
   { name: '上海', value: 0 },
@@ -153,15 +169,175 @@ function dateFormat(_row: ProvinceRow, _column: unknown, cellValue: unknown): st
   }
 }
 
-/** 地图降级：echarts 5+ 无内置 china 地图，registerMap 所需 GeoJSON 尚未接入 */
-function showScatterInGeo() {
-  // 数据（provinceList / maxValue）已经算好，接入 echarts.registerMap('china', geoJson)
-  // 之后把 v2 的 geo/visualMap/series(type:'map') 配置补回来即可。
+/** 两张地图各自的 echarts 实例，卸载时统一 dispose */
+let chinaChart: echarts.ECharts | null = null
+let worldChart: echarts.ECharts | null = null
+
+/**
+ * 容器可能还没挂上（el-tab-pane 懒渲染 + 路由过渡未完成），
+ * 取不到就隔帧重试，避免数据先到、图却永远不画。
+ */
+function withMapDom(id: string, draw: (dom: HTMLElement) => void, retry = 0) {
+  const dom = document.getElementById(id)
+  if (dom && dom.clientWidth > 0) {
+    draw(dom)
+    return
+  }
+  if (retry < 20) {
+    setTimeout(() => withMapDom(id, draw, retry + 1), 100)
+  }
 }
 
-/** 地图降级：世界地图同理，v3 还缺 @/utils/world.json（namemap + dataArr） */
-function worldChartEvent() {
-  // 接入 world GeoJSON 与 world.json 之后，按 v2 的 nameMap/visualMap/series 配置补回来。
+/** 中国地图（对齐 v2 showScatterInGeo） */
+function showScatterInGeo() {
+  void ensureGeoMap('china').then(() => {
+    void nextTick(() => {
+      withMapDom('echart_china', (dom) => {
+      if (!chinaChart || chinaChart.isDisposed()) {
+        chinaChart = echarts.init(dom)
+      }
+      const option: EChartsOption = {
+        geo: {
+          map: 'china',
+          aspectScale: 0.75,
+          zoom: 1.1,
+        },
+        tooltip: {
+          formatter(params) {
+            const p = params as { name?: string; value?: unknown; data?: { rate?: number } }
+            return `
+              <div style="padding:10px;">
+                <div style='font-size:14px;'> ${p.name}</div>
+                <p style='text-align:left;margin-top:10px;'>
+                  ${hostValue.value}：${String(p.value ?? '')}<br/>
+                  ${hostValue.value}占比 ：${percenTableFilter(p.data?.rate || 0)}<br/>
+                </p>
+              </div>
+            `
+          },
+        },
+        visualMap: {
+          min: 0,
+          max: maxValue.value || 200,
+          left: '10%',
+          top: 'bottom',
+          text: ['高', '低'],
+          realtime: false,
+          calculable: true,
+          inRange: {
+            color: ['#fff', '#2c7be5'],
+          },
+        },
+        series: [
+          {
+            zoom: 1.1,
+            map: 'china',
+            type: 'map',
+            // echarts 6 已移除 itemStyle.normal / label.normal 层，平铺后语义与 v2 相同
+            itemStyle: {
+              borderColor: 'rgba(0, 0, 0, 0.2)',
+            },
+            emphasis: {
+              itemStyle: {
+                shadowOffsetX: 0,
+                shadowOffsetY: 0,
+                shadowBlur: 20,
+                borderWidth: 0,
+                shadowColor: 'rgba(0, 0, 0, 0.5)',
+              },
+              label: { show: false },
+            },
+            label: { show: false },
+            data: provinceList.value,
+          },
+        ],
+      }
+      chinaChart.setOption(option, true)
+      })
+    })
+  })
+}
+
+/** 世界地图（对齐 v2 worldChartEvent），max 为国家维度的最大值 */
+function worldChartEvent(max?: number) {
+  void ensureGeoMap('world').then(() => {
+    void nextTick(() => {
+      withMapDom('world_chart', (dom) => {
+      if (!worldChart || worldChart.isDisposed()) {
+        worldChart = echarts.init(dom)
+      }
+      const option: EChartsOption = {
+        grid: {
+          width: '100%',
+          height: '100%',
+          left: '10%',
+          right: '0%',
+          bottom: '0%',
+          containLabel: true,
+        },
+        tooltip: {
+          trigger: 'item',
+          formatter(params) {
+            const p = params as {
+              name?: string
+              value?: unknown
+              data?: { uv?: number; pv?: number; pvRate?: number; uvRate?: number }
+            }
+            const d = p.data
+            const uvRate = d ? percenTableFilter(d.uvRate) : 0
+            const pvRate = d ? percenTableFilter(d.pvRate) : 0
+            // 与 v2 一致（v2 此处逻辑存疑：「访问次数」那行的占比取的也是 uvRate，
+            // 且 visitCountRate 取出来后并未使用）
+            return `
+              <div style="padding:10px;">
+                <div style='font-size:14px;'> ${p.name}</div>
+                <p style='text-align:left;margin-top:10px;'>
+                  访问次数：${String(p.value ?? 0)}(占比：${uvRate || 0})<br/>
+                  访客数：${d?.uv || 0}(占比：${uvRate || 0})<br/>
+                  浏览量：${d?.pv || 0}(占比：${pvRate || 0})<br/>
+                </p>
+              </div>
+            `
+          },
+        },
+        visualMap: {
+          min: 0,
+          max: max || 100,
+          text: ['高', '低'],
+          left: '10%',
+          top: 'bottom',
+          realtime: false,
+          calculable: true,
+          inRange: {
+            color: ['#fff', '#eaf2fc', '#2c7be5'],
+          },
+        },
+        series: [
+          {
+            type: 'map',
+            name: '世界地图',
+            map: 'world',
+            roam: false,
+            label: { show: false },
+            zoom: 1.2,
+            itemStyle: {
+              borderWidth: 0.3,
+              borderColor: '#000',
+              borderType: 'solid',
+            },
+            emphasis: {
+              label: { show: true, color: '#fff' },
+              itemStyle: { areaColor: '#FF6347' },
+            },
+            nameMap: (worldData as { namemap: Record<string, string> }).namemap,
+            data: newWorldList.value,
+          },
+        ],
+      }
+      worldChart.setOption(option, true)
+      })
+    })
+  })
 }
 
 function checkMapDataEvent() {
@@ -274,10 +450,32 @@ function countryApiEvent(params: Record<string, unknown>) {
       if (res?.code != 200) return
       loadingRefresh.value = false
       const data = res.data as { rows?: CountryRow[] } | undefined
-      // v2 在这里把结果合进 worldData.dataArr 再算 max 传给世界地图，
-      // v3 缺 @/utils/world.json + world GeoJSON，地图降级，合并逻辑一并待补。
-      void (data?.rows || [])
-      worldChartEvent()
+      const resList = data?.rows || []
+      // 把接口结果按国家名合并进 world.json 的 dataArr（与 v2 逐行一致）
+      const maxList: number[] = []
+      newWorldList.value = copyObj(
+        (worldData as { dataArr: WorldItem[] }).dataArr,
+      ) as WorldItem[]
+      for (let i = 0; i < newWorldList.value.length; i++) {
+        const item = newWorldList.value[i]
+        if (!item) continue
+        for (let j = 0; j < resList.length; j++) {
+          const row = resList[j]
+          if (!row) continue
+          if (item.name == row.country) {
+            item.value = row.visitCount ?? 0
+            item.visitCountRate = row.visitCountRate || 0
+            item.pv = row.pv
+            item.pvRate = row.pvRate
+            item.uv = row.uv
+            item.uvRate = row.uvRate
+          }
+          // 与 v2 一致：max 在内层循环里收集，同一个国家会被 push 多次（不影响取最大值）
+          maxList.push(Number(item.value ?? 0))
+        }
+      }
+      const max = maxList.sort((a, b) => b - a)[0]
+      worldChartEvent(max)
     })
     .catch(() => {
       if (!isLatestCountry(token)) return
@@ -308,9 +506,25 @@ function handleClick(pane: TabsPaneContext) {
   emit('customEvent', activeMap.value)
 }
 
+/** 两张地图不走 useChart（容器在 el-tab-pane 里按需渲染），resize 与 dispose 在这里自管 */
+function handleMapResize() {
+  if (chinaChart && !chinaChart.isDisposed()) chinaChart.resize()
+  if (worldChart && !worldChart.isDisposed()) worldChart.resize()
+}
+
 onMounted(() => {
   // v2 是在 created 里 push 的，效果一样：把 areaOption 写进地址栏
   void router.push({ path: route.path, query: { areaOption: 0 } })
+  window.addEventListener('resize', handleMapResize)
+})
+
+onBeforeUnmount(() => {
+  // v2 用匿名函数 addEventListener 且从不移除，这里必须收干净，否则切页后仍在 resize 已销毁的图
+  window.removeEventListener('resize', handleMapResize)
+  chinaChart?.dispose()
+  worldChart?.dispose()
+  chinaChart = null
+  worldChart = null
 })
 
 defineExpose({ getAreaProvince })
@@ -353,7 +567,7 @@ defineExpose({ getAreaProvince })
                   </el-select>
                 </div>
               </div>
-              <!-- echarts：地图降级期间为占位容器 -->
+              <!-- 中国地图容器（GeoJSON 由 ensureGeoMap 注册） -->
               <div
                 id="echart_china"
                 style="width: 50vw; height: 400px; position: relative"
@@ -402,7 +616,7 @@ defineExpose({ getAreaProvince })
           </div>
         </el-tab-pane>
         <el-tab-pane label="按国家" name="country">
-          <!-- 世界地图降级期间为占位容器 -->
+          <!-- 世界地图容器（GeoJSON 由 ensureGeoMap 注册） -->
           <div id="world_chart" style="width: 70vw; height: 400px; margin-left: 5vw"></div>
         </el-tab-pane>
       </el-tabs>

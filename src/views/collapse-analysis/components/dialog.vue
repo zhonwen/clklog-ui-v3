@@ -145,9 +145,11 @@ function openDialogEvent(row: CrashSummaryRow, params: Record<string, unknown>) 
   activeTab.value = '崩溃设备数据汇总'
   commonParams.value = copyObj(params)
   rowList.value = copyObj(row)
-  // 与 v2 一致（v2 此处逻辑存疑：列表里的 channel 本身就是「安卓 / 苹果」，
-  // 只有等于 "Android" 才会被改写成「安卓」，其余任何取值（含「安卓」本身）都会被强制改成「苹果」）
-  if (rowList.value.channel == 'Android') {
+  // 渠道归一化：v2 只判 "Android"，而列表接口返回的本来就是中文「安卓 / 苹果」
+  //（同模块筛选下拉硬编码的就是中文 id，见 collapse-table 的 allChaneList），
+  // 导致「安卓」行也落进 else 被改成「苹果」，弹窗查到的是苹果的数据。
+  // 这里加上中文判断做兼容，英文/中文两种取值都能正确归一。
+  if (rowList.value.channel == 'Android' || rowList.value.channel == '安卓') {
     rowList.value.channel = '安卓'
   } else {
     rowList.value.channel = '苹果'

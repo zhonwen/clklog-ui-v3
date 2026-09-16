@@ -10,3 +10,28 @@ import request from '@/utils/requestUps'
 export function getTreeList(params: Record<string, unknown>) {
   return request({ url: '/category/getTreeList', method: 'post', data: params })
 }
+
+/** 标签分类列表（群画像 filterBar / tree-select 拉分类树用） */
+export function getListCategory(params: Record<string, unknown>) {
+  return request({ url: '/category/getList', method: 'post', data: params })
+}
+
+/** 新增分类（标签分类管理页） */
+export function addCategory(params: Record<string, unknown>) {
+  return request({ url: '/category/add', method: 'post', data: params })
+}
+
+/** 编辑分类 */
+export function editCategory(params: Record<string, unknown>) {
+  return request({ url: '/category/edit', method: 'post', data: params })
+}
+
+/** 拖拽排序 */
+export function dragCategory(params: Record<string, unknown>) {
+  return request({ url: '/category/drag', method: 'post', data: params })
+}
+
+/** 删除分类 */
+export function deleteCategory(params: Record<string, unknown>) {
+  return request({ url: '/category/delete', method: 'post', data: params })
+}

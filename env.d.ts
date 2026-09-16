@@ -16,6 +16,10 @@ interface GlobalConfig {
   copyRightUrl: string
   is_clklog_demo_experience_account?: boolean
   is_clklog_demo_environment?: boolean
+  /** 调试开关：ups 的规则弹窗据此显示「打印模型」按钮（v2 里直接读 window.globalConfig.isDebug） */
+  isDebug?: boolean
+  /** 标签创建方式开关：config.js 里没有这项，线上取到 undefined（与 v2 一致） */
+  otherRules?: boolean
 }
 
 declare global {

@@ -95,6 +95,12 @@ a {
   margin-left: 10px;
 }
 
+// 数字输入框宽度，来源 v2 src/styles/index.scss:48
+// ups 的属性规则/行为规则/序列卡片里的数字输入框都用它
+.input_number_width {
+  width: 100px;
+}
+
 // 来源 v2 src/styles/index.scss:86（元数据上传弹窗等的说明文案）
 .zc_explain_tip {
   font-size: 14px;
