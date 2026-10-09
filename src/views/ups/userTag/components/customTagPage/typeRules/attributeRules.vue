@@ -1020,7 +1020,6 @@ p {
 }
 
 :deep(.el-radio-button:first-child .el-radio-button__inner) {
-  font-size: 10px;
 }
 
 :deep(.el-select__wrapper) {
@@ -1037,11 +1036,19 @@ p {
   margin: 0 5px;
 }
 
+/*
+ * tab 按钮字号。v2 这一块的净效果是**所有**按钮 10px：
+ *     .el-radio-button--medium .el-radio-button__inner { font-size: 10px !important; }   ← 带 !important
+ *     .el-radio-button--medium .el-radio-button__inner { padding: 6px; font-size: 13px; } ← 13px 被上面盖掉
+ * （v2 产物里共 26 个组件带这条 !important 规则，逐个核对过）
+ * 迁移时按「first/last 10px、其余 13px」拆开写了，三个及以上 tab 时字号就不一致。
+ * element-plus 没有 --medium 后缀，这里直接把净效果写在基础规则上。
+ */
 :deep(.el-radio-button__inner) {
   border-left: 1px solid #dcdfe6;
   border-radius: 4px;
   padding: 6px;
-  font-size: 13px;
+  font-size: 10px;
 }
 
 :deep(.el-radio-button:last-child .el-radio-button__inner) {
@@ -1163,6 +1170,9 @@ p {
     font-size: 16px;
     margin: 0 8px;
     line-height: 30px;
+    // v3 的 <el-icon> 是 inline-flex + height:1em，line-height 撑不开盒子；
+    // 用同值 height 还原 v2 字体图标的垂直居中（el-icon 自带 align-items:center）
+    height: 30px;
     color: rgb(188, 188, 188);
   }
 

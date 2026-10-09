@@ -35,6 +35,43 @@ body,
   --el-color-primary-light-8: #d5e5fb;
   --el-color-primary-light-9: #eaf2fd;
   --el-color-primary-dark-2: #2362b7;
+
+  /*
+   * 控件尺寸档位：把 element-plus 的 small 从 24px 抬到 30px。
+   *
+   * 两个库的尺寸刻度不是一一对应的：
+   *   element-ui   medium 36px / small 32px / mini 28px
+   *   element-plus large  40px / default 32px / small 24px
+   * v2 里绝大多数筛选栏、弹窗表单写的是 size="mini"(28px) 或 size="small"(32px)，
+   * 迁到 v3 后都只能落到 element-plus 的 small —— 也就是 24px。
+   * 结果是输入框、日期控件、下拉框被压扁，和同一行里固定 30px 的
+   * .check_item / .zc_btn / .zc_btn_default 对不齐
+   *（/sysManage/appManage 的表单、/authManage/user 的搜索栏都是这么矮下去的）。
+   *
+   * 取 30px：既落在 v2 mini(28) 与 small(32) 之间，也正是本项目自定义控件
+   *（.check_item、.zc_btn、各 filterBar 里写死的 height: 30px）一直在用的高度，
+   * 这样一行里的控件天然就齐了，不用再逐个组件补 height。
+   *
+   * 注意：element-plus 只有 input / range-editor / input-tag 这几处读这个变量，
+   * 按钮和下拉框的 small 高度是写死的，下面两条单独补。
+   */
+  --el-component-size-small: 30px;
+}
+
+/*
+ * 按钮的 small 高度在 element-plus 里是 `.el-button--small { --el-button-size: 24px }`，
+ * 写死的值，不走上面那个变量，得单独抬。
+ */
+.el-button--small {
+  --el-button-size: 30px;
+}
+
+/*
+ * 下拉框同理：`.el-select--small .el-select__wrapper { min-height: 24px }`。
+ * 用 min-height 而不是 height，是因为 multiple 的 el-select 要靠它跟着 tag 行数撑高。
+ */
+.el-select--small .el-select__wrapper {
+  min-height: 30px;
 }
 
 html {
@@ -285,6 +322,137 @@ a {
   border: 1px solid #d8e2ef;
 }
 
+/*
+ * 区间日期选择器（type="daterange" 等）被 flex 容器拉长的问题。
+ *
+ * element-ui 的日期控件根元素是 <input class="el-date-editor el-input__inner">，
+ * 宽度就是 width，不参与 flex 伸缩。
+ * element-plus 的区间选择器根元素变成了 `.el-date-editor.el-range-editor.el-input__wrapper`，
+ * 而 EP 给 `.el-input__wrapper` 设了 `flex-grow: 1`
+ *（那条是给「wrapper 嵌在 .el-input 内部」用的，让它填满输入框）。
+ * 各 filterBar 的 .first_line / 弹窗筛选条都是 display:flex，日期控件正好是直接子项，
+ * 于是 flex-grow:1 让它无视 `style="width: 250px"` 一路撑开
+ *（实测 250px 被拉到 750px，后面的控件被挤走）。
+ *
+ * 这里只把「区间」选择器的 flex-grow 归零，保持 width / --el-date-editor-width 生效；
+ * 普通 el-input 的 .el-input__wrapper 不带 .el-range-editor，不受影响；
+ * 未写 width 的区间控件会回落到 EP 的 --el-date-editor-width: 350px，
+ * 与 element-ui 的 `.el-date-editor--daterange { width: 350px }` 一致。
+ * 个别确实要伸缩的，在行内写 flex 即可覆盖本规则。
+ */
+.el-range-editor.el-input__wrapper {
+  flex-grow: 0;
+}
+
+/*
+ * 没写宽度的 el-select 被拉满的问题（全项目 67 处，分布在 33 个文件）。
+ *
+ * element-ui：`.el-select { display: inline-block }` 且**没有 width**，
+ *   收缩到内容宽；内部是 .el-input > input.el-input__inner，
+ *   百分比宽度在收缩计算里回落到 <input> 的固有宽度（size=20）。
+ *   实测这套结构在 14px 字号下稳定渲染为 206px —— 这就是 v2 里这 67 处的实际宽度。
+ * element-plus：`.el-select { --el-select-width: 100%; width: var(--el-select-width) }`，
+ *   直接撑满父容器。
+ *
+ * 后果不止是选择器自己变宽：自定义分析的条件行是 display:flex，
+ * 属性选择器撑满后会把后面的运算符、取值框、日期控件一起挤掉，
+ * 「在 … 到 … 之间」被迫折行 —— 一个根因造成一整行错乱。
+ *
+ * 这里把默认宽度还原成 element-ui 的表现。只改变量不改 width，
+ * 所以任何行内 style="width: …"、min-width、或组件自己的 :deep(.el-select) 覆盖都仍然优先。
+ */
+.el-select {
+  --el-select-width: 206px;
+}
+
+/*
+ * 占位符（placeholder）统一 12px。
+ *
+ * element-plus 的占位符分散在好几种结构里，各自继承所在控件的字号（多为 14px），
+ * 所以同一行里输入框、下拉、日期控件的占位文字大小不一致。这里统一压到 12px。
+ *
+ * 注意 `.el-select__placeholder` 这个类同时承载「已选中的值」和「占位符」两种状态，
+ * 只有处于占位状态时才会带上 `.is-transparent`；
+ * 若直接写 `.el-select__placeholder`，会把用户选中的文字一起缩小。
+ */
+.el-input__inner::placeholder,
+.el-textarea__inner::placeholder,
+.el-date-editor .el-range-input::placeholder,
+.el-input-tag__input::placeholder,
+.el-cascader__search-input::placeholder,
+.el-select__placeholder.is-transparent {
+  font-size: 12px;
+}
+
+/*
+ * el-row 的默认布局方向。
+ *
+ * element-ui：`.el-row { position: relative; box-sizing: border-box }` —— 是**块级**的，
+ *   只有写了 type="flex" 才变成 `.el-row--flex { display: flex }`。
+ * element-plus：`.el-row { display: flex; flex-wrap: wrap }` —— **永远是 flex**，
+ *   方向控制改成了 justify / align 两个 prop。
+ *
+ * 于是 v2 里纵向堆叠的子元素，迁到 v3 全部变成了横向排列。最明显的是
+ * globalFilter / funnelStep / 自定义分析：筛选条件区块和它下面的「+添加过滤条件」、
+ * 「+」新增指标按钮是 el-row 的兄弟节点，v3 里被甩到了区块右边，
+ * 看起来就是「按钮位置不对、浮在右侧」。
+ *
+ * 全项目 56 处 el-row **没有一处**使用 justify / align / type，
+ * 其中 6 处本来就写了行内 `display: flex`（行内样式优先，不受影响），
+ * 所以还原成 element-ui 的块级行为是安全的 —— 但**必须连同下面的列规则一起还原**。
+ */
+.el-row {
+  display: block;
+
+  // element-ui 的 clearfix：行是块级的，内部浮动的列不清除的话行高会塌成 0
+  &::before,
+  &::after {
+    content: '';
+    display: table;
+  }
+
+  &::after {
+    clear: both;
+  }
+}
+
+/*
+ * 列也要跟着改回 element-ui 的浮动布局。
+ *
+ * element-ui：`[class*=el-col-] { float: left }` + `.el-col-11 { width: 45.8333% }`
+ * element-plus：`.el-col-11 { flex: 0 0 45.8333%; max-width: 45.8333%; display: block }`
+ *   —— 只有 flex-basis 和 max-width，**既没有 width 也不浮动**，完全依赖父级是 flex 才能并排。
+ *
+ * 所以上面把行改回块级之后，列就只能一个一个往下堆。
+ * /sysManage/appManage、/sysManage/globalSetting 的「左侧表单 + 右侧说明」两栏
+ * 因此叠成了一栏，右侧说明自身又是 position: absolute，直接压到表单上 —— 整块糊成一片。
+ *
+ * 这里不逐档重抄 24 个百分比宽度：width: 100% 会被 element-plus 自带的 max-width 收口，
+ * 算出来正好等于该档的百分比，一条规则覆盖所有档位。
+ */
+.el-row > [class*='el-col-'] {
+  float: left;
+  width: 100%;
+}
+
+/*
+ * el-radio-group 的排版方式。
+ *
+ * element-ui：`display: inline-block; line-height: 1; vertical-align: middle`，按钮按基线排。
+ * element-plus：`display: inline-flex; flex-wrap: wrap; align-items: center`。
+ *
+ * 差别在 align-items: center —— 当某个按钮带不对称的上下外边距时
+ *（如下拉里的「事件属性 / 用户属性」切换，第一个按钮写的是 margin: 6px 10px 15px 10px），
+ * flex 会按 margin-box 居中，这个按钮相对同组其它按钮上浮 (15-6)/2 ≈ 4px，
+ * 实测两个按钮顶部坐标差 4px —— 就是「切换按钮未对齐」。
+ * 行内写了 display:flex 的分组不受影响（行内优先）。
+ */
+.el-radio-group {
+  display: inline-block;
+  line-height: 1;
+  vertical-align: middle;
+}
+
 // 组合框内部的下拉（外层 .warry_select 之类的容器自带边框）。
 // v2 在各个 filterBar 的 scoped 里都写了同一串：
 //   ::v-deep .single_select .el-input__inner {
@@ -413,4 +581,13 @@ a {
 
 .filterbar-tab-right {
   margin-right: 12px;
+}
+ .el-select__placeholder{
+  font-size: 12px !important;
+ }
+.el-dialog__headerbtn{
+  top: 0 !important;
+}
+.el-input-number__increase, .el-input-number__decrease{
+  height: 28px !important;
 }

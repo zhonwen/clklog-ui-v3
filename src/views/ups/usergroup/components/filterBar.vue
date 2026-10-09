@@ -14,6 +14,7 @@ import { useTrackingStore } from '@/stores/tracking'
 import { useLatestOnly } from '@/composables/useLatestOnly'
 import { getListCategory } from '@/api/upsapi/categorymanage'
 import { createMethod, tagStatusList, updateTypeList } from '../constants'
+import { ALL_OPTION, toApiValue, withAllOption } from '@/utils/select-all-option'
 import {
   datePickerDayDisabled,
   datePickerDayShortcuts,
@@ -46,21 +47,21 @@ const loadingApi = ref(false)
 /** v2 取的是 this.$route.name，只在 mounted 时读一次 */
 const routePath = ref(String(route.name ?? ''))
 const tagTree = ref<PropertyNode[]>([])
-const updateType = ref('') // 更新方式
-const status = ref('')
+const updateType = ref(ALL_OPTION) // 更新方式
+const status = ref(ALL_OPTION)
 const startMatchTime = ref('')
 const endMatchTime = ref('')
-const createType = ref('')
+const createType = ref(ALL_OPTION)
 const search = ref('')
 
 const projectName = computed(() => trackingStore.projectName)
 
 const defaultParams = computed(() => ({
-  updateType: updateType.value,
-  status: status.value,
+  updateType: toApiValue(updateType.value),
+  status: toApiValue(status.value),
   startMatchTime: startMatchTime.value,
   endMatchTime: endMatchTime.value,
-  createType: createType.value,
+  createType: toApiValue(createType.value),
   search: search.value,
 }))
 
@@ -70,9 +71,10 @@ const commonParams = computed<Record<string, unknown>>(() => ({ ...defaultParams
 const pickerShortcuts = datePickerDayShortcuts
 const pickerDisabled = datePickerDayDisabled
 
-const updateTypeOptions: LabelValue[] = updateTypeList
-const statusOptions: LabelValue[] = tagStatusList
-const createMethodOptions: LabelValue[] = createMethod
+// 「全部」选项在 element-plus 下的兼容处理，说明见 utils/select-all-option.ts
+const updateTypeOptions: LabelValue[] = withAllOption(updateTypeList)
+const statusOptions: LabelValue[] = withAllOption(tagStatusList)
+const createMethodOptions: LabelValue[] = withAllOption(createMethod)
 
 function handlePicker(val: unknown) {
   // v2：清空日期时把 endMatchTime 也清掉，否则保留「今天」作为区间右端
@@ -84,11 +86,11 @@ function handlePicker(val: unknown) {
 }
 
 function resetApiList() {
-  updateType.value = '' // 更新方式
-  status.value = ''
+  updateType.value = ALL_OPTION // 更新方式
+  status.value = ALL_OPTION
   endMatchTime.value = ''
   startMatchTime.value = ''
-  createType.value = ''
+  createType.value = ALL_OPTION
   search.value = ''
 }
 

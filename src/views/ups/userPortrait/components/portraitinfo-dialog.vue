@@ -65,7 +65,7 @@ interface CategoryTreeNode {
   tableName?: string
   displayName?: string
   valueType?: string
-  tag?: unknown
+  tag?: boolean
   children?: CategoryTreeNode[]
 }
 
@@ -146,6 +146,8 @@ function getTreeListApi() {
             displayName: item.displayName,
             tableName: item.tableName,
             dataType: item.valueType,
+            // 带上接口的 tag 标记：只有标签可选，分类（含空分类）不可选
+            tag: item.tag,
           }
           if (!item.tag && item.children) {
             newItem.children = transform(item.children)

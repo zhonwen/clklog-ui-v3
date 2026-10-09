@@ -188,9 +188,26 @@ const categoryTreeProps = {
   value: 'id',
   label: 'name',
   children: 'children',
-  // v2 的 :disable-branch-nodes="true"
-  disabled: (data: CategoryNode) => !!(data.children && data.children.length),
 }
+
+/*
+ * 这里**不能**把 v2 的 :disable-branch-nodes="true" 直译成 props.disabled。
+ *
+ * vue-treeselect 的该选项只是「父节点不可选」，点父节点依然展开/收起；
+ * element-plus 的 el-tree-select 里，分支一旦 disabled，点击就彻底没反应 ——
+ * 见 element-plus/es/components/tree-select/src/tree.mjs 的 onNodeClick：
+ *     if (!showCheckbox && (checkStrictly || node.isLeaf)) {
+ *       if (!disabled) { 选中 }            // ← 禁用：不选中
+ *     } else if (expandOnClickNode) { 展开 } // ← 也走不到这里
+ * 而且 expandOnClickNode 还被 computed(() => !checkStrictly && expandOnClickNode) 强制关掉，
+ * 所以「check-strictly + disabled 分支」这对组合 = 父节点置灰且完全点不动，只能点那个很小的三角。
+ *
+ * 正确做法是**同时去掉 check-strictly 和 disabled**：
+ * 此时 onNodeClick 的判断变成 (false || node.isLeaf) ——
+ *   叶子 → 选中；分支 → 落到 else 分支展开/收起。
+ * 这恰好就是 v2 vue-treeselect 的语义，且不需要任何额外代码。
+ * 本组件没有用 checkbox（showCheckbox 为假），check-strictly 对其它行为无影响。
+ */
 
 function createMetFilter(index: string | number) {
   if (index == 1) {
@@ -477,6 +494,8 @@ function getCategoryApi() {
             displayName: item.displayName ?? '',
             tableName: item.tableName,
             dataType: item.valueType,
+            // 带上接口的 tag 标记：只有标签可选，分类（含空分类）不可选
+            tag: item.tag,
           }
           // 递归处理 children，并且如果 children 是空数组则删除
           if (!item.tag && item.children) {
@@ -619,7 +638,12 @@ type EstimateRow = {
   totalUser?: number
 }
 
-function estimateEvent(noValid?: boolean) {
+/**
+ * noValid 用 unknown 而不是 boolean：模板上绑的是 `@click="estimateEvent"`，
+ * 点击时实际传进来的是 MouseEvent（只取其真值性），与 v2 一致。
+ * 保存流程里则是显式 estimateEvent(true)。
+ */
+function estimateEvent(noValid?: unknown) {
   if (noValid) {
     const isEmpty = submitSaveForm('估算')
     if (isEmpty) return
@@ -898,9 +922,20 @@ function submitSaveForm(event?: string) {
         closeOnClickModal: false, // 点击遮罩不关闭
       })
         .then(() => {
-          // 与 v2 一致（v2 此处逻辑存疑：只处理了 createIndex === 1，
-          // 其余五种创建方式点确定后什么都不会发生）
-          if (createIndex.value === 1) {
+          /*
+           * createIndex 来自路由 query，本文件里统一用 `String(route.query.createIndex ?? '')` 存成**字符串**，
+           * 所以这里不能用 `=== 1` 和数字字面量比 —— `'1' === 1` 恒为 false，
+           * 点「确定」后既不会去估算也不会保存（本文件其它判断用的都是 `==`，只有这里漏了）。
+           *
+           * v2 写的也是 `this.createIndex === 1`，但它没有强制 String()：
+           * 应用内 router.push({ query: { createIndex: 数字 } }) 时 vue-router 会保留数字，
+           * 于是 v2 走应用内跳转能命中、刷新页面后同样会失效 —— 属于 v2 的潜在缺陷。
+           * 这里统一转成数字再比，两种入口都正确。
+           *
+           * 另：只处理 createIndex=1 是 v2 的既有设计（原注释「目前支持index=1自定义指标」），
+           * 其余五种创建方式点确定后确实什么都不做，保持不变。
+           */
+          if (Number(createIndex.value) === 1) {
             const shouldEstimate =
               (!formula.value.id && !params.isEstimate) ||
               (formula.value.id && params.isEstimate === 'edit')
@@ -1110,7 +1145,6 @@ onBeforeUnmount(() => {
                     :data="tagTree"
                     :props="categoryTreeProps"
                     :render-after-expand="false"
-                    check-strictly
                     filterable
                   />
                 </el-form-item>
@@ -1241,7 +1275,14 @@ onBeforeUnmount(() => {
                 >
                 </el-option>
               </el-select>
-              <el-button class="zc_btn" :disabled="isReadonly" @click="estimateEvent()"
+              <!--
+                这里**不能**写成 estimateEvent()：v2 绑的是 `@click="estimateEvent"`（不带括号），
+                回调拿到的是 MouseEvent（恒为真值），于是 noValid 为真 —— 点「估算」会先跑一遍
+                submitSaveForm('估算') 做规则校验，不合法时直接提示并中断。
+                写成 estimateEvent() 会让 noValid 变成 undefined，校验被整个跳过，
+                带着空/非法规则直接打估算接口。群画像的同名按钮保留了 v2 写法，这里对齐。
+              -->
+              <el-button class="zc_btn" :disabled="isReadonly" @click="estimateEvent"
                 >估算</el-button
               >
             </div>
@@ -1542,10 +1583,6 @@ onBeforeUnmount(() => {
   :deep(.el-card__header) {
     padding: 10px;
   }
-}
-
-:deep(.el-form-item__error) {
-  top: 87%;
 }
 
 :deep(.el-form-item) {

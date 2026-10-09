@@ -373,12 +373,13 @@ function getActiveList() {
         })
         countLineEcharts()
       }
-      // 与 v2 一致（v2 此处逻辑存疑：非 200 时不关 loading，图表区会一直转圈）
+      // 【有意偏离 v2】v2 在非 200 分支不关 loading，图表区会一直转圈
+      loadingEchart.value = false
     })
     .catch(() => {
       if (!activeReq.isLatest(token)) return
-      // 与 v2 一致（v2 此处逻辑存疑：catch 里写的是 loadingEchart = true，出错后永远转圈）
-      loadingEchart.value = true
+      // 【有意偏离 v2】v2 这里写的是 `loadingEchart = true`（疑似笔误），出错后永远转圈
+      loadingEchart.value = false
     })
 }
 

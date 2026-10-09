@@ -1493,23 +1493,42 @@ function startAnalysis() {
         // end
         emit('customListEvent', resultDetail, modelObject.value)
       } else {
-        // 与 v2 完全一致的结构，包括「这里没有 emit('customLoading', false)」这一点。
-        // 与 v2 一致（v2 此处逻辑存疑）：
-        //   1) v2 的请求层在 customAnalysis 非 200 时 return undefined，于是 res.code 直接抛
-        //      TypeError 被下面的 catch 接住，这个 else 分支实际永远进不来 —— 错误弹窗、
-        //      以及 openErrorMsg 里那段「书签内的查询分析模型已变更」的文案从未真正出现过；
-        //   2) 正因为如此，v2 漏写的 emit('customLoading', false) 也没暴露出来（catch 里补上了）。
-        // v3 的请求层会把 res 原样回传，这个分支于是变成可达：弹窗会显示（这本来就是它的用途），
-        // 但父级的 loading 不会被关掉，趋势图/表格上的 spinner 会一直转。【需确认】
-        // 若确认要修：在这一行前补 emit('customLoading', false) 即可。
-        dialogMsgErrorRef.value?.openErrorMsg(res?.msg || '请求超时')
+        /*
+         * 接口返回非 200（含请求超时）时必须自己收掉 loading。
+         *
+         * v2 的请求层在非 200 时 return undefined，于是上面的 `res.code` 直接抛 TypeError，
+         * 被下面的 catch 接住 —— loading 是在 catch 里被关掉的，这个 else 分支实际永远进不来
+         *（openErrorMsg 里那段「书签内的查询分析模型已变更」的文案在 v2 从未真正出现过），
+         * 所以 v2 漏写 emit('customLoading', false) 这件事一直没暴露。
+         *
+         * v3 的请求层会把 res 原样回传，这个分支变成可达：错误弹窗正常弹出（这本来就是它的用途），
+         * 但父级 loading 不会被关 —— 表现就是「点开始分析、接口报错后，图表/表格上的 spinner 一直转」。
+         */
+        failAnalysis(res?.msg || '请求超时')
       }
     })
     .catch(() => {
       if (!latestAnalysis.isLatest(token)) return
-      startLoading.value = false
-      emit('customLoading', false)
+      // 网络异常 / 请求层抛错，同样要清掉上一次的结果，避免旧数据冒充本次结果
+      failAnalysis()
     })
+}
+
+/**
+ * 「开始分析」失败时的统一收尾：收 loading + 清空上一次的分析结果（+ 可选的错误弹窗）。
+ *
+ * 清空走的是父级已有的 'clearnData' 约定：它把 resultList 置空，
+ * 而图表与表格两个区块都挂在 `v-if="resultList"` 上，置空即整体卸载，
+ * 所以不会出现「报错弹窗盖在上一次的图表上」这种旧数据冒充新结果的情况。
+ *
+ * 两次 emit 的顺序不能换：'clearnData' 会把父级 loading 赋成这个字符串（真值），
+ * 必须随后再 emit 一次 false 才能真正收掉遮罩。
+ */
+function failAnalysis(errMsg?: string) {
+  startLoading.value = false
+  emit('customLoading', 'clearnData')
+  emit('customLoading', false)
+  if (errMsg) dialogMsgErrorRef.value?.openErrorMsg(errMsg)
 }
 
 /** 通用属性 */
@@ -2311,7 +2330,6 @@ p {
 }
 
 :deep(.el-radio-button:first-child .el-radio-button__inner) {
-  font-size: 10px;
 }
 
 :deep(.el-radio-button .el-radio-button__inner) {
@@ -2330,11 +2348,19 @@ p {
   margin: 0 5px;
 }
 
+/*
+ * tab 按钮字号。v2 这一块的净效果是**所有**按钮 10px：
+ *     .el-radio-button--medium .el-radio-button__inner { font-size: 10px !important; }   ← 带 !important
+ *     .el-radio-button--medium .el-radio-button__inner { padding: 6px; font-size: 13px; } ← 13px 被上面盖掉
+ * （v2 产物里共 26 个组件带这条 !important 规则，逐个核对过）
+ * 迁移时按「first/last 10px、其余 13px」拆开写了，三个及以上 tab 时字号就不一致。
+ * element-plus 没有 --medium 后缀，这里直接把净效果写在基础规则上。
+ */
 :deep(.el-radio-button__inner) {
   border-left: 1px solid #dcdfe6;
   border-radius: 4px;
   padding: 6px;
-  font-size: 13px;
+  font-size: 10px;
 }
 
 :deep(.el-radio-button:last-child .el-radio-button__inner) {
@@ -2464,6 +2490,9 @@ p {
     font-size: 16px;
     margin: 0 8px;
     line-height: 30px;
+    // v3 的 <el-icon> 是 inline-flex + height:1em，line-height 撑不开盒子；
+    // 用同值 height 还原 v2 字体图标的垂直居中（el-icon 自带 align-items:center）
+    height: 30px;
     color: rgb(188, 188, 188);
   }
 

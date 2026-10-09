@@ -19,6 +19,11 @@ export interface PropertyNode {
   dataType?: string
   /** user_tag 类型选中时写回 item.field 的是 tableName 而不是 name */
   tableName?: string
+  /**
+   * 是否是「标签」节点。标签树里混着标签和分类，接口用这个字段区分，
+   * 只有 tag === true 的节点才是可选的标签（分类哪怕没有子节点也不可选）。
+   */
+  tag?: boolean
   propertyId?: string
   children?: PropertyNode[]
 }

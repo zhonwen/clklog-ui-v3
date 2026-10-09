@@ -377,6 +377,8 @@ function getCategoryApi() {
             displayName: item.displayName as string,
             tableName: item.tableName as string,
             dataType: item.valueType as string,
+            // 带上接口的 tag 标记：只有标签可选，分类（含空分类）不可选
+            tag: item.tag as boolean | undefined,
           }
           if (!item.tag && item.children) {
             newItem.children = transform(item.children as Record<string, unknown>[])

@@ -415,8 +415,8 @@ function totalApiEvent() {
     })
     .catch(() => {
       if (!isLatestTotal(token)) return
-      // 与 v2 一致（v2 此处逻辑存疑：catch 里把 loadingRefresh 置成了 true，报错后遮罩不会消失）
-      loadingRefresh.value = true
+      // 【有意偏离 v2】v2 这里把 loadingRefresh 置成了 true（疑似笔误），报错后遮罩不会消失
+      loadingRefresh.value = false
     })
 }
 

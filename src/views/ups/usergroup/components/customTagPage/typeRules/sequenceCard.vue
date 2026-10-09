@@ -900,6 +900,9 @@ p {
     font-size: 16px;
     margin: 0 8px;
     line-height: 30px;
+    // v3 的 <el-icon> 是 inline-flex + height:1em，line-height 撑不开盒子；
+    // 用同值 height 还原 v2 字体图标的垂直居中（el-icon 自带 align-items:center）
+    height: 30px;
     color: rgb(188, 188, 188);
   }
 

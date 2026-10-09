@@ -136,7 +136,8 @@ function exitpageEvent(params0: Record<string, unknown>) {
         entrylist.value = data?.rows || []
         total.value = data?.total || 0
       }
-      // 与 v2 一致（v2 此处逻辑存疑：code 非 200 时不关 loading，遮罩会一直转）
+      // 【有意偏离 v2】v2 在非 200 分支不关 loading，遮罩会一直转
+      loadingRefresh.value = false
     })
     .catch(() => {
       if (!isLatest(token)) return

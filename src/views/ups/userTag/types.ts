@@ -30,6 +30,11 @@ export type PropertyNode = {
   dataType?: string
   /** 用户标签节点的实际表名（tree-select 选中 user_tag 时取它当 field） */
   tableName?: string
+  /**
+   * 是否是「标签」节点。标签树里混着标签和分类，接口用这个字段区分，
+   * 只有 tag === true 才是可选的标签（分类哪怕没有子节点也不可选）。
+   */
+  tag?: boolean
   propertyId?: string
   children?: PropertyNode[]
   /** 联级（cascader）用的子级；formateCascader 会就地写入 */

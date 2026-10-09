@@ -139,6 +139,17 @@
       font-weight: 600;
       font-size: 15px;
       color: #4d4d4d;
+
+      /*
+       * 标题不换行。v2 的 .block-title 与这里逐字相同，之所以不换行是因为它有足够的空间：
+       * element-ui 的 .el-select 没有宽度，作为 flex 兄弟节点收缩到内容宽；
+       * element-plus 的 .el-select 是 `width: var(--el-select-width)` = 100%，
+       * 于是像 App 崩溃分析那样「标题 + 指标多选框」并排时，多选框把标题挤成两三行
+       *（如 "IOS|应用版本崩溃率" 被折成 3 行）。
+       * flex-shrink: 0 保证标题先占满自己需要的宽度，nowrap 再兜住不折行。
+       */
+      flex-shrink: 0;
+      white-space: nowrap;
     }
 
     .block-head-icon {

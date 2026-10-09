@@ -39,6 +39,8 @@ export interface PropertyNode {
   displayName?: string
   dataType?: string
   tableName?: string
+  /** 是否是「标签」节点（分类为 false/undefined，哪怕没有子节点也不可选） */
+  tag?: boolean
   propertyId?: string
   /** 事件分组名（getGroupedProperties 返回的 groupName，mergeCommonPropertiesToEvents 会复制到 name/displayName） */
   groupName?: string

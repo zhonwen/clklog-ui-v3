@@ -730,7 +730,10 @@ p {
   font-size: 10px;
 }
 
-:deep(.el-radio-button--medium .el-radio-button__inner) {
+// v2 是 .el-radio-button--medium .el-radio-button__inner { font-size: 10px !important }，
+// element-plus 没有 --medium 后缀，原样照搬是条死规则 —— 它的作用是把**所有** tab 压到 10px
+//（后面那条 13px 正是被它盖掉的），这里换成 EP 能命中的选择器。
+:deep(.el-radio-button__inner) {
   font-size: 10px !important;
 }
 
@@ -764,7 +767,11 @@ p {
   font-size: 12px;
 }
 
-:deep(.el-radio-button--medium .el-radio-button__inner) {
+// 同上：--medium 在 element-plus 不存在，这条照搬过来也是死的，
+// 导致 tab 丢了 padding: 6px（退回 EP 默认的 8px 15px，按钮比 v2 大一圈）。
+// 换成能命中的选择器；font-size 仍保留 13px —— 它在 v2 里本就被上面那条 10px !important 盖掉，
+// 这里保持同样的层叠关系，最终生效的还是 10px。
+:deep(.el-radio-button__inner) {
   padding: 6px;
   font-size: 13px;
 }
@@ -880,6 +887,9 @@ p {
     font-size: 16px;
     margin: 0 8px;
     line-height: 30px;
+    // v3 的 <el-icon> 是 inline-flex + height:1em，line-height 撑不开盒子；
+    // 用同值 height 还原 v2 字体图标的垂直居中（el-icon 自带 align-items:center）
+    height: 30px;
     color: rgb(188, 188, 188);
   }
 

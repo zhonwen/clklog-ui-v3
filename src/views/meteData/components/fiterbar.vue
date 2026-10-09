@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Refresh, RefreshRight, Search } from '@element-plus/icons-vue'
 import { useTrackingStore } from '@/stores/tracking'
+import { ALL_OPTION, allOption, toApiValue } from '@/utils/select-all-option'
 import { useLatestOnly } from '@/composables/useLatestOnly'
 import { getGroupNameListApi } from '@/api/sysmanage/manageAttribute'
 import { getGroupNameListEventApi } from '@/api/sysmanage/manageEvent'
@@ -19,7 +20,7 @@ export interface FilterOption {
 /** 与 v2 的 channelArray 完全一致 */
 const channelArray: FilterOption[] = [
   {
-    value: '',
+    value: ALL_OPTION,
     label: '全部',
   },
   {
@@ -83,29 +84,28 @@ const emit = defineEmits<{
 const trackingStore = useTrackingStore()
 const { next: nextGroup, isLatest: isLatestGroup } = useLatestOnly()
 
-const all: FilterOption = {
-  label: '全部',
-  value: '',
-}
+// 「全部」选项在 element-plus 下的兼容处理，说明见 utils/select-all-option.ts
+const all: FilterOption = allOption
 
 const loadingApi = ref(false)
-const isAccept = ref<string | boolean>('')
-const channel = ref<string | boolean>('')
-const isPreset = ref<string | boolean>('')
+// 「全部」选项在 element-plus 下的兼容处理，说明见 utils/select-all-option.ts
+const isAccept = ref<string | boolean>(ALL_OPTION)
+const channel = ref<string | boolean>(ALL_OPTION)
+const isPreset = ref<string | boolean>(ALL_OPTION)
 /** 是否共用 */
-const commonOnly = ref<string | boolean>('')
-const display = ref<string | boolean>('')
-const status = ref<string | boolean>('')
+const commonOnly = ref<string | boolean>(ALL_OPTION)
+const display = ref<string | boolean>(ALL_OPTION)
+const status = ref<string | boolean>(ALL_OPTION)
 const name = ref('')
 const searchWord = ref('')
-const groupName = ref<string | boolean>('')
-const dataType = ref<string | boolean>('')
+const groupName = ref<string | boolean>(ALL_OPTION)
+const dataType = ref<string | boolean>(ALL_OPTION)
 
 const channelList = ref<FilterOption[]>(channelArray)
 const groupTitle = ref('属性分组')
 const displayList: FilterOption[] = [
   {
-    value: '',
+    value: ALL_OPTION,
     label: '全部',
   },
   {
@@ -119,7 +119,7 @@ const displayList: FilterOption[] = [
 ]
 const statuList: FilterOption[] = [
   {
-    value: '',
+    value: ALL_OPTION,
     label: '全部',
   },
   {
@@ -133,7 +133,7 @@ const statuList: FilterOption[] = [
 ]
 const isCommonList: FilterOption[] = [
   {
-    value: '',
+    value: ALL_OPTION,
     label: '全部',
   },
   {
@@ -143,7 +143,7 @@ const isCommonList: FilterOption[] = [
 ]
 const isPresetList: FilterOption[] = [
   {
-    value: '',
+    value: ALL_OPTION,
     label: '全部',
   },
   {
@@ -157,7 +157,7 @@ const isPresetList: FilterOption[] = [
 ]
 const dataTypeList: FilterOption[] = [
   {
-    value: '',
+    value: ALL_OPTION,
     label: '全部',
   },
   {
@@ -186,7 +186,7 @@ const groupList = ref<FilterOption[]>([])
 // 与 v2 一致（v2 此处逻辑存疑：标签列表的取数在 v2 里被整段注释掉了，tagList 恒为空数组，
 // 但父页面仍然按 filerList[1] 取它，所以这里保留这个空数组）
 const tagList = ref<FilterOption[]>([])
-const tag = ref<string | boolean>('')
+const tag = ref<string | boolean>(ALL_OPTION)
 
 const commonData = ref<Record<string, unknown> | undefined>(undefined)
 let refreshTimer: ReturnType<typeof setTimeout> | null = null
@@ -194,32 +194,32 @@ let refreshTimer: ReturnType<typeof setTimeout> | null = null
 const projectName = computed(() => trackingStore.projectName)
 
 const defaultParams = computed(() => ({
-  display: display.value,
-  isPreset: isPreset.value,
-  commonOnly: commonOnly.value,
-  status: status.value,
+  display: toApiValue(display.value),
+  isPreset: toApiValue(isPreset.value),
+  commonOnly: toApiValue(commonOnly.value),
+  status: toApiValue(status.value),
 }))
 
 const commonParams = computed<Record<string, unknown>>(() => {
   let obj: Record<string, unknown> = {}
   obj = Object.assign(obj, defaultParams.value)
   if (props.ByGrop || props.ByEventGrop) {
-    obj = Object.assign(obj, { groupName: groupName.value })
+    obj = Object.assign(obj, { groupName: toApiValue(groupName.value) })
   }
   if (props.ByDataType) {
-    obj = Object.assign(obj, { dataType: dataType.value })
+    obj = Object.assign(obj, { dataType: toApiValue(dataType.value) })
   }
   if (props.ByTag || props.ByEventTag) {
-    obj = Object.assign(obj, { tag: tag.value })
+    obj = Object.assign(obj, { tag: toApiValue(tag.value) })
   }
   if (props.BySearchWord) {
     obj = Object.assign(obj, { name: name.value })
   }
   if (props.ByPlatform) {
-    obj = Object.assign(obj, { channel: channel.value })
+    obj = Object.assign(obj, { channel: toApiValue(channel.value) })
   }
   if (props.ByReceive) {
-    obj = Object.assign(obj, { isAccept: isAccept.value })
+    obj = Object.assign(obj, { isAccept: toApiValue(isAccept.value) })
   }
   return obj
 })
@@ -238,17 +238,17 @@ watch(commonParams, (newVal, oldVal) => {
 })
 
 function resetApiList() {
-  isAccept.value = ''
-  channel.value = ''
-  isPreset.value = ''
+  isAccept.value = ALL_OPTION
+  channel.value = ALL_OPTION
+  isPreset.value = ALL_OPTION
   // 是否共用
-  commonOnly.value = ''
-  display.value = ''
-  status.value = ''
+  commonOnly.value = ALL_OPTION
+  display.value = ALL_OPTION
+  status.value = ALL_OPTION
   name.value = ''
   searchWord.value = ''
-  groupName.value = ''
-  dataType.value = ''
+  groupName.value = ALL_OPTION
+  dataType.value = ALL_OPTION
 }
 
 function refreshApiList() {

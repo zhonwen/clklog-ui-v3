@@ -467,7 +467,7 @@ onBeforeUnmount(() => {
                  element-ui / element-plus 都不认，实际用的是默认分隔符 "-"，这里不再保留） -->
             <el-date-picker
               v-model="localValue.rangeTime"
-              style="margin-left: 10px; width: 210px; height: 30px"
+              style="margin-left: 10px; width: 210px"
               size="small"
               type="daterange"
               start-placeholder="开始日期"
@@ -579,9 +579,21 @@ onBeforeUnmount(() => {
     height: 100% !important; // 关键：跟随网格高度撑开
     min-height: 30px !important;
 
+    /*
+     * element-plus 在 .el-input__inner 外面多包了一层 .el-input__wrapper：
+     * 边框（box-shadow）长在 wrapper 上，wrapper 自己还带 1px 的上下 padding。
+     * v2 的 element-ui 没有这一层，min-height: 30px 写在 .el-input__inner 上
+     * 就是整个控件的高度；照搬到 v3 会变成 30 + 2 = 32px，
+     * 比同一行的 .check_item / 日期控件 / .zc_btn 高出 2px。
+     * 所以高度下限挪到 wrapper 上，内层只负责跟着撑开。
+     */
+    .el-input__wrapper {
+      min-height: 30px;
+      box-sizing: border-box;
+    }
+
     .el-input__inner {
       height: 100% !important;
-      min-height: 30px !important;
       line-height: 30px !important;
       padding: 0 30px 0 10px !important;
       display: block !important;
@@ -668,11 +680,15 @@ onBeforeUnmount(() => {
   height: 12px;
 }
 
-// 自定义输入框高度, 行高, 字体大小
-:deep(.el-input--medium .el-input__inner) {
-  height: 30px;
-  line-height: 30px;
-}
+/*
+ * v2 这里靠 `.el-input--medium .el-input__inner { height: 30px }` 把这一行控件定在 30px。
+ * 那条规则迁到 v3 是死的：element-plus 没有 --medium 这档尺寸，
+ * 输入框高度也改由 .el-input 上的 --el-input-height 推导，写在 .el-input__inner 上盖不住。
+ * 现在统一由 styles/index.scss 里的 --el-component-size-small: 30px 兜底，
+ * 这里不再重复定高，只保留 v2 原有的字号设定。
+ */
+
+// 自定义输入框字体大小
 
 :deep(.el-input__suffix) {
   display: flex;

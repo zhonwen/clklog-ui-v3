@@ -1,4 +1,15 @@
-.el-select-dropdown.is-multiple .el-select-dropdown__item.selected .checkbox__inner {
+/*
+ * 选中态的类名在两个库里不一样：
+ *   element-ui  渲染 `.el-select-dropdown__item.selected`
+ *   element-plus 渲染 `.el-select-dropdown__item.is-selected`
+ *     （见 element-plus/es/components/select/src/option.vue…mjs 的 containerKls：ns.is("selected", …)）
+ * v2 的这套样式只写了 `.selected`，迁到 v3 后一条都命不中 ——
+ * 自定义勾选框 `.checkbox__inner` 永远停在未选中样式，
+ * 表现就是「下拉项右侧已经打钩、高亮成蓝字，左边的方框却还是空的」。
+ * 两个类名都写上，v2/v3 行为一致。
+ */
+.el-select-dropdown.is-multiple .el-select-dropdown__item.selected .checkbox__inner,
+.el-select-dropdown.is-multiple .el-select-dropdown__item.is-selected .checkbox__inner {
   background-color: #2c7be5;
   border-color: #2c7be5;
   box-sizing: content-box;
@@ -9,7 +20,8 @@
   line-height: 14px;
 }
 
-.el-select-dropdown.is-multiple .el-select-dropdown__item.selected .checkbox__inner .inner-box {
+.el-select-dropdown.is-multiple .el-select-dropdown__item.selected .checkbox__inner .inner-box,
+.el-select-dropdown.is-multiple .el-select-dropdown__item.is-selected .checkbox__inner .inner-box {
   content: '';
   border: 1px solid #ffffff;
   border-left: 0;
@@ -29,7 +41,32 @@
   background-color: #ffffff;
 }
 
-.el-select-dropdown.is-multiple .el-select-dropdown__item.selected {
+.el-select-dropdown.is-multiple .el-select-dropdown__item.selected,
+.el-select-dropdown.is-multiple .el-select-dropdown__item.is-selected {
   color: #697195;
   font-weight: 400 !important;
+}
+
+/*
+ * 「空分类」展开后的占位行（tree-select 里补的那条 No sub-options.）。
+ *
+ * v2 的 vue-treeselect 自带这个提示：一个橙色警告图标 + 灰字说明，用来表达
+ * 「这个分类下没有任何可选项」。element-plus 的 el-tree-select 没有内置，
+ * 由 tree-select 组件补一条禁用的占位子节点，这里给它对齐 v2 的观感。
+ *
+ * 用属性选择器而不是额外类名：占位节点是数据层塞进去的，
+ * el-tree-select 渲染时不会把自定义字段透传成 class，只能靠文案所在的禁用项定位，
+ * 所以这里限定在「树形下拉里的禁用项」上，普通禁用选项不受影响。
+ */
+.el-tree-select__popper .el-tree-node__content .el-select-dropdown__item.is-disabled {
+  color: #a8abb2;
+  font-style: normal;
+  cursor: default;
+
+  &::before {
+    content: '⚠';
+    margin-right: 6px;
+    color: #e6a23c;
+    font-style: normal;
+  }
 }

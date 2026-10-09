@@ -547,7 +547,10 @@ onMounted(() => {
     font-size: 12px;
   }
 
-  .el-radio-button--medium .el-radio-button__inner {
+  // v2 是 .el-radio-button--medium .el-radio-button__inner，element-plus 没有 --medium 后缀，
+  // 照搬是死规则，tab 会退回 EP 默认的 14px / padding 8px 15px。
+  // 本组件在 v2 里没有那条 10px !important 覆盖，所以生效值就是 13px / padding 6px。
+  .el-radio-button__inner {
     padding: 6px;
     font-size: 13px;
   }

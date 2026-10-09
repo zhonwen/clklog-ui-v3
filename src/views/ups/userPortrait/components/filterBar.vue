@@ -25,18 +25,20 @@ const emit = defineEmits<{
 }>()
 
 const trackingStore = useTrackingStore()
+import { ALL_OPTION, toApiValue } from '@/utils/select-all-option'
 const { next, isLatest } = useLatestOnly()
 
 const loadingApi = ref(false)
 const tagTree = ref<TreeSourceNode[]>([])
 /** 更新方式 */
-const updateType = ref('')
+// 「全部」选项在 element-plus 下的兼容处理，说明见 utils/select-all-option.ts
+const updateType = ref(ALL_OPTION)
 const startMatchTime = ref('')
 const endMatchTime = ref('')
 const search = ref('')
 
 const updateTypeList = [
-  { value: '', label: '全部' },
+  { value: ALL_OPTION, label: '全部' },
   { value: '例行', label: '例行' },
   { value: '手动', label: '手动' },
 ]
@@ -44,7 +46,7 @@ const updateTypeList = [
 const projectName = computed(() => trackingStore.projectName)
 
 const defaultParams = computed(() => ({
-  updateType: updateType.value,
+  updateType: toApiValue(updateType.value),
   startMatchTime: startMatchTime.value,
   endMatchTime: endMatchTime.value,
   search: search.value,
@@ -84,7 +86,7 @@ function refreshApiList() {
 }
 
 function resetApiList() {
-  updateType.value = '' // 更新方式
+  updateType.value = ALL_OPTION // 更新方式
   startMatchTime.value = ''
   endMatchTime.value = ''
   search.value = ''

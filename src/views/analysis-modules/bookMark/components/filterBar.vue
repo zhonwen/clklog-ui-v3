@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { Refresh, RefreshRight, Search } from '@element-plus/icons-vue'
+import { ALL_OPTION, toApiValue } from '@/utils/select-all-option'
 
 /**
  * 书签列表页的筛选条（v2 src/views/analysis-modules/bookMark/components/filterBar.vue）。
@@ -13,16 +14,17 @@ const emit = defineEmits<{
 const loadingApi = ref(false)
 const commonData = ref<Record<string, unknown> | ''>('')
 const searchWord = ref('')
-const catetory = ref('')
+// 「全部」选项在 element-plus 下的兼容处理，说明见 utils/select-all-option.ts
+const catetory = ref(ALL_OPTION)
 const name = ref('')
 const booktypeList = [
-  { value: '', label: '全部' },
+  { value: ALL_OPTION, label: '全部' },
   { value: '事件分析', label: '事件分析' },
   { value: '漏斗分析', label: '漏斗分析' },
 ]
 
 const defaultParams = computed(() => ({
-  catetory: catetory.value,
+  catetory: toApiValue(catetory.value),
   name: name.value,
 }))
 
@@ -38,7 +40,7 @@ function setTopFilterParams(val: Record<string, unknown>) {
 
 function resetApiList() {
   searchWord.value = ''
-  catetory.value = ''
+  catetory.value = ALL_OPTION
   name.value = ''
 }
 

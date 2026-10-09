@@ -24,6 +24,7 @@ import { bus } from '@/utils/event-bus'
 import { useTrackingStore } from '@/stores/tracking'
 import { getListCategory } from '@/api/upsapi/categorymanage'
 import { dataTypeList } from '@/utils/modelOptions/up-manage'
+import { ALL_OPTION, toApiValue, withAllOption } from '@/utils/select-all-option'
 import {
   datePickerDayShortcuts,
   disabledFutureDate,
@@ -49,42 +50,77 @@ const route = useRoute()
 const router = useRouter()
 const trackingStore = useTrackingStore()
 
+// 「全部」选项在 element-plus 下的兼容处理，说明见 utils/select-all-option.ts
+
 const routePath = ref(route.name)
 const loadingApi = ref(false)
 const tagType = ref<string | null>(null) // 标签分类
 const tagTree = ref<CategoryNode[]>([])
 const categoryId = ref('')
-const valueType = ref('') // 数据类型
-const updateType = ref('') // 更新方式
-const status = ref('')
+const valueType = ref(ALL_OPTION) // 数据类型
+const updateType = ref(ALL_OPTION) // 更新方式
+const status = ref(ALL_OPTION)
 const startMatchTime = ref('')
 const endMatchTime = ref('')
-const createType = ref('')
+const createType = ref(ALL_OPTION)
 const search = ref('')
 
-/** el-tree-select 的字段映射（等价 v2 的 normalizer） */
+/**
+ * el-tree-select 的字段映射（等价 v2 vue-treeselect 的 normalizer）。
+ *
+ * 这里**不能**照搬 v2 的 `:disable-branch-nodes="true"` 去设 `disabled`：
+ * vue-treeselect 的该选项只是「父节点不可选」，点父节点依然会展开/收起；
+ * 而 element-plus 的 el-tree 一旦 disabled，节点会被置灰、失去 is-focusable，
+ * 点文字也不再展开，只能点那个很小的三角箭头 —— 就是「看起来像禁用、很难用」。
+ *
+ * 改法见 handleTreeNodeClick / handleTreeValueUpdate：
+ * 节点全部保持可用（不置灰），点父节点只做展开/收起，并在赋值阶段拦掉父节点的选中。
+ */
 const treeSelectProps = {
   value: 'name',
   label: 'name',
   children: 'children',
-  // v2 的 :disable-branch-nodes="true"
-  disabled: (data: CategoryNode) => !!(data.children && data.children.length),
+}
+
+/** 某个值是否对应一棵子树的父节点 */
+function isBranchValue(val: string | null, list: CategoryNode[] = tagTree.value): boolean {
+  if (val == null) return false
+  for (const node of list) {
+    if (node.name === val) return !!(node.children && node.children.length)
+    if (node.children && node.children.length && isBranchValue(val, node.children)) return true
+  }
+  return false
+}
+
+/** 点父节点：只展开/收起，不选中 */
+function handleTreeNodeClick(data: CategoryNode, node: { expanded: boolean }) {
+  if (data.children && data.children.length) {
+    node.expanded = !node.expanded
+    return
+  }
+  handleCascader(data)
+}
+
+/** 赋值拦截：父节点不写入 v-model（等价 v2 的「父节点不可选」） */
+function handleTreeValueUpdate(val: string | null) {
+  if (isBranchValue(val)) return
+  tagType.value = val
 }
 
 // v2 里 booktypeList 和 dateTimeList（= latestVersionCountTime(true)）都声明了但模板没用到，
 // 是死数据，这里不再搬运。
 const tagStatusList = [
-  { value: '', label: '全部' },
+  { value: ALL_OPTION, label: '全部' },
   { value: '启用', label: '启用' },
   { value: '暂停', label: '暂停' },
 ]
 const updateTypeList = [
-  { value: '', label: '全部' },
+  { value: ALL_OPTION, label: '全部' },
   { value: '例行', label: '例行' },
   { value: '手动', label: '手动' },
 ]
 const createMethod = [
-  { value: '', label: '全部' },
+  { value: ALL_OPTION, label: '全部' },
   { value: '自定义标签值', label: '自定义标签值' },
   { value: '基础指标值', label: '基础指标值' },
   { value: '首次末次特征', label: '首次末次特征' },
@@ -93,16 +129,20 @@ const createMethod = [
   { value: 'SQL计算结果', label: 'SQL计算结果' },
 ]
 
+/** dataTypeList 是共享常量（utils/modelOptions/up-manage），不改它，只在本页把「全部」换成哨兵值 */
+const dataTypeOptions = withAllOption(dataTypeList)
+
 const projectName = computed(() => trackingStore.projectName)
 
+// 「全部」在这里换回空串，接口拿到的参数与 v2 一致
 const commonParams = computed<Record<string, string>>(() => ({
   categoryId: categoryId.value,
-  valueType: valueType.value,
-  updateType: updateType.value,
-  status: status.value,
+  valueType: toApiValue(valueType.value),
+  updateType: toApiValue(updateType.value),
+  status: toApiValue(status.value),
   startMatchTime: startMatchTime.value,
   endMatchTime: endMatchTime.value,
-  createType: createType.value,
+  createType: toApiValue(createType.value),
   search: search.value,
 }))
 
@@ -125,12 +165,12 @@ function refreshApiList() {
 function resetApiList() {
   tagType.value = null // 标签分类
   categoryId.value = ''
-  valueType.value = '' // 数据类型
-  updateType.value = '' // 更新方式
-  status.value = ''
+  valueType.value = ALL_OPTION // 数据类型
+  updateType.value = ALL_OPTION // 更新方式
+  status.value = ALL_OPTION
   startMatchTime.value = ''
   endMatchTime.value = ''
-  createType.value = ''
+  createType.value = ALL_OPTION
   search.value = ''
 }
 
@@ -204,17 +244,19 @@ onMounted(() => {
           <div class="first_line" style="display: flex; position: relative">
             <div class="title filterbar-tab-right" style="line-height: 30px">标签分类:</div>
             <el-tree-select
-              v-model="tagType"
+              :model-value="tagType"
               class="filterbar-tab-right tag-tree-select"
               style="font-size: 13px; color: #606266; font-weight: 400px; z-index: 99999"
               :data="tagTree"
               :props="treeSelectProps"
               :render-after-expand="false"
               check-strictly
+              expand-on-click-node
               filterable
               clearable
               placeholder="请选择"
-              @node-click="handleCascader"
+              @update:model-value="handleTreeValueUpdate"
+              @node-click="handleTreeNodeClick"
               @change="handleClear"
             />
             <div class="warry_select filterbar-tab-right">
@@ -226,7 +268,7 @@ onMounted(() => {
                 style="width: 150px"
               >
                 <el-option
-                  v-for="item in dataTypeList"
+                  v-for="item in dataTypeOptions"
                   :key="item.value"
                   :label="item.label"
                   :value="item.value"
