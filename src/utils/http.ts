@@ -8,6 +8,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import router from '@/router'
 import { useUserStore } from '@/stores/user'
 import { getToken } from '@/utils/auth'
+import { handleLoginExpired } from '@/utils/loginExpired'
 
 export type ApiChannel = 'api' | 'manage' | 'authmanage' | 'ups'
 
@@ -151,6 +152,10 @@ export function createBizService(options: CreateBizServiceOptions): AxiosInstanc
       handleForbidden()
       return res
     }
+    if (handleLoginExpired(res, response)) {
+      showErrorOnce(res.message || res.msg || 'Error')
+      return Promise.reject(new Error(res.message || res.msg || 'Error'))
+    }
     if (res.code !== 200) {
       const url = response.config.url || ''
       // v2 里各通道的特判分两组：一组在 423 之前（漏斗分析静默、书签不存在），
@@ -183,6 +188,11 @@ export function createBizService(options: CreateBizServiceOptions): AxiosInstanc
     // 整个项目唯一一处需要跨这个边界的类型转换就收在这一行。
     onResponse as unknown as (response: AxiosResponse) => Promise<AxiosResponse>,
     (error) => {
+      const res = error?.response?.data as ApiResult | undefined
+      if (handleLoginExpired(res, error?.response)) {
+        showErrorOnce((res && (res.message || res.msg)) || error?.message || 'Error')
+        return Promise.reject(error)
+      }
       if (options.onHttpError?.(error)) {
         return Promise.reject(error)
       }

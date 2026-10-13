@@ -254,7 +254,6 @@ a {
   .el-select__wrapper.is-hovering:not(.is-focused) {
     box-shadow: none !important;
     background-color: transparent !important;
-    font-size: 12px !important;
     min-height: 28px !important;
     padding-left: 10px !important;
   }
@@ -267,8 +266,6 @@ a {
 
   .el-input__inner {
     border: none !important;
-    background-color: transparent !important;
-    font-size: 12px !important;
     transform: scale(0.9);
     height: 30px !important;
     line-height: 30px !important;
@@ -365,24 +362,8 @@ a {
   --el-select-width: 206px;
 }
 
-/*
- * 占位符（placeholder）统一 12px。
- *
- * element-plus 的占位符分散在好几种结构里，各自继承所在控件的字号（多为 14px），
- * 所以同一行里输入框、下拉、日期控件的占位文字大小不一致。这里统一压到 12px。
- *
- * 注意 `.el-select__placeholder` 这个类同时承载「已选中的值」和「占位符」两种状态，
- * 只有处于占位状态时才会带上 `.is-transparent`；
- * 若直接写 `.el-select__placeholder`，会把用户选中的文字一起缩小。
- */
-.el-input__inner::placeholder,
-.el-textarea__inner::placeholder,
-.el-date-editor .el-range-input::placeholder,
-.el-input-tag__input::placeholder,
-.el-cascader__search-input::placeholder,
-.el-select__placeholder.is-transparent {
-  font-size: 12px;
-}
+
+
 
 /*
  * el-row 的默认布局方向。
@@ -453,16 +434,6 @@ a {
   vertical-align: middle;
 }
 
-// 组合框内部的下拉（外层 .warry_select 之类的容器自带边框）。
-// v2 在各个 filterBar 的 scoped 里都写了同一串：
-//   ::v-deep .single_select .el-input__inner {
-//     border-*-width: 0; border-bottom: 1px solid #acb2ba; ... border-bottom-width: 0; ... }
-// 注意那串最后又用 `border-bottom-width: 0` 收尾，**净效果是完全无边框** + 透明底 + 12px。
-// element-plus 的 el-select 不再渲染 el-input，边框是 .el-select__wrapper 的 inset box-shadow，
-// 所以各组件里照搬的 .el-input__inner 规则全部落空 —— 下拉自带一圈边框，和外层容器叠成双层。
-// 这里统一按 EP 的结构补回，三态都要覆盖（hover / focus 各有一条 EP 规则）。
-// 不迁 v2 的 width: 100px：v2 是设在内层 input 上，EP 的 wrapper 会撑满 el-select，
-// 照搬会把各处 el-select 的行内宽度（150px 等）一起改掉。
 .single_select {
   .el-select__wrapper,
   .el-select__wrapper.is-focused,
@@ -475,16 +446,7 @@ a {
   }
 }
 
-/* ------------------------------------------------------------------
- * 以下整块来源 v2 src/styles/components/element-unifystyle.scss 与
- * element-unify-style.scss（两个文件都在 v2 的 styles/index.scss 里全局引入）。
- * v3 迁移时漏掉了表格这部分，导致表头字号/字重、行高、hover 底色、边框色都和 v2 不一致。
- * ------------------------------------------------------------------ */
 
-// 表头：v2 是 13px / 400。element-plus 的 .el-table thead 只设了 color
-//（--el-table-header-text-color 解析出来同样是 #909399，颜色本身没差），
-// 字号走 .el-table 的 14px，字重则吃浏览器给 <th> 的默认 bold(700)——
-// 所以 v3 的表头比 v2 又大又粗，看着像换了颜色。
 .el-table thead {
   font-size: 13px !important;
   font-weight: 400;
@@ -605,9 +567,7 @@ a {
 .filterbar-tab-right {
   margin-right: 12px;
 }
- .el-select__placeholder{
-  font-size: 12px !important;
- }
+
 .el-dialog__headerbtn{
   top: 0 !important;
 }

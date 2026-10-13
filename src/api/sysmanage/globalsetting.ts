@@ -46,7 +46,7 @@ export function getStat(params: Record<string, unknown>) {
 }
 
 export function getCaptchaImage(params: Record<string, unknown> = {}) {
-  return request<{ img?: string; cid?: string }>({
+  return request<{ img?: string; cid?: string; publicKey?: string }>({
     url: '/auth/getCaptchaImage',
     method: 'post',
     data: params,

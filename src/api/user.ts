@@ -40,3 +40,11 @@ export function modifyPassword(params: Record<string, unknown>) {
     data: params,
   })
 }
+
+export function modifyPasswordAnom(params: Record<string, unknown>) {
+  return request({
+    url: '/auth/modifyPasswordAnom',
+    method: 'post',
+    data: params,
+  })
+}

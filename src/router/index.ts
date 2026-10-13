@@ -24,6 +24,12 @@ export const constantRoutes: AppRouteRecordRaw[] = [
     hidden: true,
   },
   {
+    path: '/LoginExpired',
+    name: 'LoginExpired',
+    component: () => import('@/views/login/expire.vue'),
+    hidden: true,
+  },
+  {
     path: '/auth-redirect',
     component: () => import('@/views/login/auth-redirect.vue'),
     hidden: true,

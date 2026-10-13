@@ -11,10 +11,14 @@ const proxyPresets = {
   // 本地代理对齐 v2 vue.config.js：演示站网关是 /manage，不是 /api/manage
   // 生产包仍读 public/config.js 里带 /api 前缀的地址
   demo: {
-    api: 'https://pro.clklog.com/api',
-    manage: 'https://pro.clklog.com/manage',
-    authmanage: 'https://pro.clklog.com/authmanage',
-    ups: 'https://pro.clklog.com/ups-api',
+    // api: 'https://pro.clklog.com/api',
+    // manage: 'https://pro.clklog.com/manage',
+    // authmanage: 'https://pro.clklog.com/authmanage',
+    // ups: 'https://pro.clklog.com/ups-api',
+    api:'http://clklog-idm3.servers.zcunsoft.com/proapi-wt',
+    manage:'http://clklog-idm3.servers.zcunsoft.com/manage-wt',
+    authmanage:'http://clklog-idm3.servers.zcunsoft.com/manage-wt',
+    ups:'http://clklog-idm3.servers.zcunsoft.com/ups-api-wt',
   },
   test: {
     api: 'http://10.10.220.188/proapi',

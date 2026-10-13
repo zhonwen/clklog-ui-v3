@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getCurrentInstance, nextTick, onMounted, ref, watch } from 'vue'
+import { getCurrentInstance, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Delete, Edit, Key, Plus, Refresh, Search } from '@element-plus/icons-vue'
 import {
@@ -17,6 +17,8 @@ import { copyObj } from '@/utils/copy'
 import { useLatestOnly } from '@/composables/useLatestOnly'
 import { useTrackingStore } from '@/stores/tracking'
 import { bus } from '@/utils/event-bus'
+import { getPasswordError } from '@/utils/validate'
+import { encryptPasswordWithCid, fetchEncryptContext } from '@/utils/rsaEncrypt'
 
 /** 项目上挂的角色选项，id = 项目名 + '_' + 角色id */
 interface ProjectRoleOption extends RoleRow {
@@ -71,7 +73,12 @@ const queryParams = ref({
   displayName: '',
 })
 const open = ref(false)
+const addFormReadonly = ref(true)
 const title = ref('')
+const addPasswordRef = ref()
+const addPassword2Ref = ref()
+const modifyPasswordRef = ref()
+const modifyPassword2Ref = ref()
 const form = ref<UserForm>({
   userId: null,
   userName: '',
@@ -84,9 +91,66 @@ const form = ref<UserForm>({
 })
 // el-tabs 的 update:modelValue 类型是 string | number
 const activeName = ref<string | number>('first')
+
+const passwordType = reactive({
+  password: 'password' as 'password' | 'text',
+  password2: 'password' as 'password' | 'text',
+})
+const modifyPwdType = reactive({
+  password: 'password' as 'password' | 'text',
+  password2: 'password' as 'password' | 'text',
+})
+
+const validatePassword = (_rule: unknown, value: string, callback: (error?: Error) => void) => {
+  const error = getPasswordError(value, '请输入密码')
+  if (error) {
+    callback(new Error(error))
+  } else {
+    callback()
+  }
+}
+
+const validatePassword2 = (_rule: unknown, value: string, callback: (error?: Error) => void) => {
+  if (!value) {
+    callback(new Error('请再次输入新密码'))
+  } else if (value !== form.value.password) {
+    callback(new Error('两次密码不一致'))
+  } else {
+    callback()
+  }
+}
+
+const validateModifyPassword = (_rule: unknown, value: string, callback: (error?: Error) => void) => {
+  const error = getPasswordError(value, '请输入新密码')
+  if (error) {
+    callback(new Error(error))
+  } else {
+    if (formModifyPwd.value.password2) {
+      void modifyPwdFormRef.value?.validateField('password2')
+    }
+    callback()
+  }
+}
+
+const validateModifyPassword2 = (_rule: unknown, value: string, callback: (error?: Error) => void) => {
+  if (!value) {
+    callback(new Error('请再次输入新密码'))
+  } else if (value !== formModifyPwd.value.password) {
+    callback(new Error('两次密码不一致'))
+  } else {
+    callback()
+  }
+}
+
 const rules: FormRules<UserForm> = {
   userName: [{ required: true, message: '请输入账号', trigger: 'blur' }],
   displayName: [{ required: true, message: '请输入显示名', trigger: 'blur' }],
+  password: [{ required: true, trigger: 'blur', validator: validatePassword }],
+  password2: [{ required: true, trigger: 'blur', validator: validatePassword2 }],
+}
+const modifyPwdRules: FormRules<{ password?: string; password2?: string }> = {
+  password: [{ required: true, trigger: 'blur', validator: validateModifyPassword }],
+  password2: [{ required: true, trigger: 'blur', validator: validateModifyPassword2 }],
 }
 // v2 直接把 vuex 里的 projectArray 拿来用，并给每个项目对象挂 inProjectRoles（写脏了 store 里的数据）。
 // v3 用一份快照副本，页面行为一致，但不写 store。
@@ -292,6 +356,7 @@ function handleDel(row: UserRow) {
 
 function handleEdit(row: UserRow) {
   title.value = '编辑账号'
+  addFormReadonly.value = false
   open.value = true
   activeName.value = 'first'
   fillProjectRoles()
@@ -337,6 +402,7 @@ function handleEdit(row: UserRow) {
 
 function handleAdd() {
   title.value = '新增账号'
+  addFormReadonly.value = true
   form.value = {
     userId: null,
     userName: '',
@@ -352,6 +418,15 @@ function handleAdd() {
   selectedProjectRoles.value = []
   void nextTick(() => {
     formRef.value?.clearValidate()
+    setTimeout(() => {
+      form.value.userName = ''
+      form.value.displayName = ''
+      form.value.password = undefined
+      form.value.password2 = undefined
+      passwordType.password = 'password'
+      passwordType.password2 = 'password'
+      formRef.value?.clearValidate()
+    }, 120)
   })
 }
 
@@ -399,9 +474,16 @@ async function addSubmit() {
     bus.emit('$demo_event')
     return
   }
-  const para = Object.assign({}, form.value)
   const token = nextSubmit()
-  addUser(para)
+  fetchEncryptContext()
+    .then(({ cid, publicKey }) => {
+      const para = Object.assign({}, form.value)
+      para.password = encryptPasswordWithCid(form.value.password || '', cid, publicKey)
+      delete para.password2
+      delete para.oldpassword
+      para.cid = cid
+      return addUser(para)
+    })
     .then((res) => {
       if (!isLatestSubmit(token)) return
       loading.value = false
@@ -415,9 +497,13 @@ async function addSubmit() {
       open.value = false
       getUsers()
     })
-    .catch(() => {
+    .catch((e) => {
       if (!isLatestSubmit(token)) return
       loading.value = false
+      const msg = e instanceof Error ? e.message : ''
+      if (msg && /公钥|加密|验证码标识/.test(msg)) {
+        ElMessage.error(msg)
+      }
     })
 }
 
@@ -455,9 +541,10 @@ function submit() {
   })
   form.value.roles = roles
   if (!form.value.userId) {
-    if (!form.value.password) {
+    const passwordError = getPasswordError(form.value.password, '请输入密码')
+    if (passwordError) {
       ElMessage({
-        message: '请输入密码',
+        message: passwordError,
         type: 'warning',
       })
       loading.value = false
@@ -499,8 +586,9 @@ function handleEditModifyPwd(row: UserRow) {
     password: undefined,
     password2: undefined,
   }
+  modifyPwdType.password = 'password'
+  modifyPwdType.password2 = 'password'
   void nextTick(() => {
-    // v2 这里取的是 $refs["form"]（三个表单共用一个 ref 名），按意图对应修改密码表单
     modifyPwdFormRef.value?.clearValidate()
   })
 }
@@ -516,9 +604,10 @@ function submitModifyPwd() {
     return
   }
   loading.value = true
-  if (!formModifyPwd.value.password) {
+  const passwordError = getPasswordError(formModifyPwd.value.password, '请输入新密码')
+  if (passwordError) {
     ElMessage({
-      message: '请输入新密码',
+      message: passwordError,
       type: 'warning',
     })
     loading.value = false
@@ -540,36 +629,54 @@ function submitModifyPwd() {
     loading.value = false
     return
   }
-  const para = {
-    userId: formModifyPwd.value.userId,
-    newPassword: formModifyPwd.value.password,
-  }
   const token = nextSubmit()
-  modifyPassword(para)
+  fetchEncryptContext()
+    .then(({ cid, publicKey }) => {
+      return modifyPassword({
+        userId: formModifyPwd.value.userId,
+        newPassword: encryptPasswordWithCid(formModifyPwd.value.password || '', cid, publicKey),
+        cid,
+      })
+    })
     .then((res) => {
       if (!isLatestSubmit(token)) return
       loading.value = false
-      const msg = res?.data ? '修改成功' : res?.msg
-      const type = res?.data ? 'success' : 'warning'
-      ElMessage({
-        message: msg,
-        type: type,
-      })
-      modifyPwdFormRef.value?.resetFields()
-      openModifyPwd.value = false
+      if (res?.code === 200) {
+        ElMessage({
+          message: '修改成功',
+          type: 'success',
+        })
+        modifyPwdFormRef.value?.resetFields()
+        openModifyPwd.value = false
+      } else {
+        ElMessage({
+          message: res?.msg || '修改失败',
+          type: 'warning',
+        })
+      }
     })
-    .catch(() => {
+    .catch((e) => {
       if (!isLatestSubmit(token)) return
       loading.value = false
-    })
-    .finally(() => {
-      if (!isLatestSubmit(token)) return
-      loading.value = false
+      const msg = e instanceof Error ? e.message : ''
+      if (msg && /公钥|加密|验证码标识/.test(msg)) {
+        ElMessage.error(msg)
+      }
     })
 }
 
 // v2 还有一个 UserSelectChange（写 this.editForm / this.addForm，这两个 data 根本不存在），
 // 模板里没有任何地方绑定，属于死代码，未迁移。
+
+function showPwd(
+  field: 'password' | 'password2',
+  inputRef: typeof addPasswordRef,
+  typeKey?: 'modifyPwdType',
+) {
+  const typeMap = typeKey ? modifyPwdType : passwordType
+  typeMap[field] = typeMap[field] === 'password' ? 'text' : 'password'
+  nextTick(() => inputRef.value?.focus())
+}
 
 onMounted(() => {
   getUsers()
@@ -727,23 +834,51 @@ onMounted(() => {
                   clearable
                 ></el-input>
               </el-form-item>
+              <div class="autofill-trap">
+                <input type="text" />
+                <input type="password" />
+              </div>
               <el-form-item v-if="!form.userId" label="密码" prop="password">
                 <el-input
                   v-model="form.password"
                   size="small"
-                  placeholder="请输入密码"
-                  clearable
-                  type="password"
-                ></el-input>
+                  placeholder="12-18位，包含大小写字母、数字、数字、特殊字符"
+                  :type="passwordType.password"
+                  maxlength="18"
+                  show-word-limit
+                  name="newpassword"
+                  :ref="addPasswordRef"
+                  autocomplete="off"
+                >
+                  <template #suffix>
+                    <i
+                      class="pwd-toggle"
+                      :class="passwordType.password === 'password' ? 'iconfont icon-biyan' : 'iconfont icon-yanjing'"
+                      @click="showPwd('password', addPasswordRef)"
+                    ></i>
+                  </template>
+                </el-input>
               </el-form-item>
               <el-form-item v-if="!form.userId" label="确认密码" prop="password2">
                 <el-input
                   v-model="form.password2"
                   size="small"
                   placeholder="请再次输入新密码"
-                  clearable
-                  type="password"
-                ></el-input>
+                  :type="passwordType.password2"
+                  maxlength="18"
+                  show-word-limit
+                  name="password2"
+                  :ref="addPassword2Ref"
+                  autocomplete="off"
+                >
+                  <template #suffix>
+                    <i
+                      class="pwd-toggle"
+                      :class="passwordType.password2 === 'password' ? 'iconfont icon-biyan' : 'iconfont icon-yanjing'"
+                      @click="showPwd('password2', addPassword2Ref)"
+                    ></i>
+                  </template>
+                </el-input>
               </el-form-item>
             </el-form>
           </el-tab-pane>
@@ -823,26 +958,54 @@ onMounted(() => {
           ref="modifyPwdFormRef"
           class="dialog-form"
           :model="formModifyPwd"
-          :rules="rules"
+          :rules="modifyPwdRules"
           label-width="80px"
         >
+          <div class="autofill-trap">
+            <input type="text" />
+            <input type="password" />
+          </div>
           <el-form-item label="新密码" prop="password">
             <el-input
               v-model="formModifyPwd.password"
               size="small"
-              placeholder="请输入新密码"
-              clearable
-              type="password"
-            ></el-input>
+              placeholder="12-18位，包含大小写字母、数字、数字、特殊字符"
+              :type="modifyPwdType.password"
+              maxlength="18"
+              show-word-limit
+              name="newpassword"
+              :ref="modifyPasswordRef"
+              autocomplete="off"
+            >
+              <template #suffix>
+                <i
+                  class="pwd-toggle"
+                  :class="modifyPwdType.password === 'password' ? 'iconfont icon-biyan' : 'iconfont icon-yanjing'"
+                  @click="showPwd('password', modifyPasswordRef, 'modifyPwdType')"
+                ></i>
+              </template>
+            </el-input>
           </el-form-item>
           <el-form-item label="确认密码" prop="password2">
             <el-input
               v-model="formModifyPwd.password2"
               size="small"
               placeholder="请再次输入新密码"
-              clearable
-              type="password"
-            ></el-input>
+              :type="modifyPwdType.password2"
+              maxlength="18"
+              show-word-limit
+              name="password2"
+              :ref="modifyPassword2Ref"
+              autocomplete="off"
+            >
+              <template #suffix>
+                <i
+                  class="pwd-toggle"
+                  :class="modifyPwdType.password2 === 'password' ? 'iconfont icon-biyan' : 'iconfont icon-yanjing'"
+                  @click="showPwd('password2', modifyPassword2Ref, 'modifyPwdType')"
+                ></i>
+              </template>
+            </el-input>
           </el-form-item>
         </el-form>
         <div style="margin-top: 20px; display: flex; justify-content: end">
@@ -857,6 +1020,23 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
+:deep(.el-form-item__error) {
+  white-space: normal;
+}
+.autofill-trap {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+}
+.pwd-toggle {
+  cursor: pointer;
+  font-size: 16px;
+  color: #909399;
+  margin-right: 4px;
+  &:hover {
+    color: #409eff;
+  }
+}
 // 分页样式在 src/styles/index.scss 全局引入一次（sass 不允许 @use 出现在嵌套块里）
 // 复选框样式来自 v2 styles/components/el-checkbox.scss，只搬本页用到的部分
 :deep(.el-checkbox) {

@@ -17,6 +17,7 @@ import { getPermissionRedirectPath, pickEntryPath } from '@/utils/menu'
 import { isNavigationFailure } from 'vue-router'
 import { useResizeHandler } from '@/layout/mixin/ResizeHandler'
 import { useLatestOnly } from '@/composables/useLatestOnly'
+import { encryptPasswordWithCid } from '@/utils/rsaEncrypt'
 
 useResizeHandler()
 
@@ -51,6 +52,7 @@ const loginForm = reactive({
 const captchaObj = reactive({
   img: '',
   cid: '',
+  publicKey: '',
 })
 
 const loginRules: FormRules = {
@@ -78,12 +80,18 @@ function getCaptcha() {
   // 就是一次「已卸载组件的更新」，会在导航的 nextTick 里抛错并打断跳转
   const token = next()
   captchaLoading.value = true
+  captchaObj.publicKey = ''
+  captchaObj.cid = ''
   getCaptchaImage()
     .then((res) => {
       if (!isLatest(token)) return
-      if (res.data && res.code == 200) {
-        captchaObj.img = res.data.img ? `data:image/png;base64,${res.data.img}` : ''
-        captchaObj.cid = res.data.cid || ''
+      if (res && res.code == 200) {
+        const payload = res.data || {}
+        const img = payload.img || (res as unknown as { img?: string }).img || ''
+        captchaObj.img = img ? `data:image/png;base64,${img}` : ''
+        captchaObj.cid = payload.cid || (res as unknown as { cid?: string }).cid || ''
+        captchaObj.publicKey =
+          payload.publicKey || (res as unknown as { publicKey?: string }).publicKey || ''
       }
     })
     .finally(() => {
@@ -105,11 +113,24 @@ function showPwd() {
 async function handleLogin() {
   const valid = await loginFormRef.value?.validate().catch(() => false)
   if (!valid) return
+  let encryptedPassword = ''
+  try {
+    encryptedPassword = encryptPasswordWithCid(
+      loginForm.password,
+      captchaObj.cid,
+      captchaObj.publicKey,
+    )
+  } catch (e) {
+    loading.value = false
+    ElMessage.error((e instanceof Error && e.message) || '密码加密失败，请刷新验证码后重试')
+    getCaptcha()
+    return
+  }
   loading.value = true
   try {
     const response = await login({
       username: loginForm.username.trim(),
-      password: loginForm.password,
+      password: encryptedPassword,
       code: loginForm.code,
       cid: captchaObj.cid,
     })

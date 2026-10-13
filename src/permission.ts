@@ -21,9 +21,10 @@ const whiteList = [
   '/NoPermission',
   '/NoProjectPermission',
   '/PermissionDenied',
+  '/LoginExpired',
 ]
 
-const errorPages = ['/Unauthorized', '/NoPermission', '/NoProjectPermission', '/PermissionDenied']
+const errorPages = ['/Unauthorized', '/NoPermission', '/NoProjectPermission', '/PermissionDenied', '/LoginExpired']
 
 const WIDTH = 992
 function isMobile() {

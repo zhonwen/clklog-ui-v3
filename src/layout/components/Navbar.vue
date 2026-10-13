@@ -309,7 +309,7 @@ onMounted(() => {
   prejectCode.value = String(savedProjectCode || options.value[0]?.projectName || '')
   trackingStore.setProject(prejectCode.value)
 
-  // 事件分析 / 漏斗分析的书签链接会带项目参数，刷新时要按 URL 切项目（v2 Navbar created 同逻辑）
+
   const queryParam = route.query.query
   const projectNameParam = route.query.projectName
   if (typeof queryParam === 'string' && queryParam) {
@@ -498,13 +498,6 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-// 项目选择框，来源 v2 layout/components/Navbar.vue:538-562。
-// v2 那段里真正命中的只有 `.el-input__inner { border: none }`
-//（其余三条写成了 `.custom_select .el-select .el-input__inner`，
-//  而 .custom_select 本身就是 .el-select，内部没有第二层 el-select，选不中），
-// 所以 v2 的实际效果就是「项目下拉无边框、看起来像一段纯文本」。
-// element-plus 2.5 起 el-select 不再用 el-input，边框改为 .el-select__wrapper 的 inset box-shadow，
-// hover / focus 各有一条覆盖规则，这里三态一起去掉才能等价。
 .custom_select {
   :deep(.el-select__wrapper),
   :deep(.el-select__wrapper.is-focused),
@@ -512,7 +505,6 @@ onUnmounted(() => {
     box-shadow: none;
   }
 
-  // 对齐 v2 element-ui 输入框的盒子：高 40px、左内边距 15px
   :deep(.el-select__wrapper) {
     min-height: 40px;
     padding-left: 15px;
@@ -526,7 +518,7 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-// 来源 v2 Navbar.vue:600-604
+
 .right-menu {
   display: flex;
   align-items: center;
@@ -535,7 +527,7 @@ onUnmounted(() => {
   margin-right: 7px;
 }
 
-// 顶栏「下载」按钮，来源 v2 layout/components/Navbar.vue:490
+
 .btnEvent {
   cursor: pointer;
   width: 65px;
@@ -549,7 +541,7 @@ onUnmounted(() => {
   text-align: center;
 }
 
-// 来源 v2 Navbar.vue:606-612
+
 .dataTime {
   font-size: 13px;
   font-weight: 400;
@@ -604,7 +596,6 @@ onUnmounted(() => {
   }
 }
 
-// v2 移动端是 justify-content: flex-start + right-menu 绝对定位贴右（Navbar.vue:54-77）
 .mobile-bar {
   align-items: center;
   justify-content: flex-start;

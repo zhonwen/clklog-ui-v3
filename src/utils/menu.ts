@@ -14,6 +14,7 @@ export const EXTRA_URI_PATHS = [
   '/NoProjectPermission',
   '/PermissionDenied',
   '/Unauthorized',
+  '/LoginExpired',
   '/redirect',
   '/login',
   '/auth-redirect',
