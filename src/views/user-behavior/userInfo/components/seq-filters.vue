@@ -627,11 +627,15 @@ onBeforeUnmount(() => {
     overflow-y: auto;
     box-sizing: border-box;
     align-items: center;
+    /* 标签容器覆盖在输入框上方，会拦截清除按钮的点击；
+       容器本身不接收事件，只让内部标签接收 */
+    pointer-events: none;
 
     .el-tag {
       margin: 2px 0 1px 6px;
       height: 24px;
       line-height: 22px; // border-box
+      pointer-events: auto;
     }
 
     /* 优化搜索输入框：在非聚焦状态下不占据剩余空间，消除“空洞”感 */
@@ -646,6 +650,7 @@ onBeforeUnmount(() => {
       height: 24px;
       line-height: 24px;
       color: #606266;
+      pointer-events: auto;
 
       /* 只有在输入内容或聚焦时才拉伸 */
       &:focus {

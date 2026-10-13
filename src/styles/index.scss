@@ -495,6 +495,44 @@ a {
   line-height: 16px;
 }
 
+// 展开行内容行高与内边距，避免属性行之间过于紧凑、内容贴边
+.el-table__expanded-cell {
+  line-height: 20px;
+  padding: 25px !important;
+}
+
+// 自定义"仅底部边框"输入框样式，适配 Element Plus 的 .el-input__wrapper / .el-textarea__inner
+.gm-input-01 .el-input__wrapper {
+  border: none !important;
+  border-bottom: 1px solid #dcdfe6 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  background: transparent;
+  align-items: flex-end;
+}
+
+.gm-input-01 .el-textarea__inner {
+  border: none !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid #dcdfe6 !important;
+  border-radius: 0 !important;
+  background: transparent;
+  padding: 0 !important;
+  resize: none;
+  line-height: 24px;
+}
+
+// inline form-item 标签与输入框垂直居中对齐
+// Element Plus 默认 .el-form-item__label { align-items: flex-start }，导致标签文字偏上
+.el-form--inline .el-form-item {
+  align-items: center;
+}
+.el-form-item__label {
+  color: #606266;
+  font-weight: 700 !important;
+}
+
 // 排序箭头，来源 v2 element-unifystyle.scss:17-25
 .el-table .caret-wrapper {
   height: 15px;
@@ -544,21 +582,6 @@ a {
   border-color: #d8e2ef;
 }
 
-/* ------------------------------------------------------------------
- * el-dialog 盒模型兼容：element-ui 的 .el-dialog 自身没有 padding，
- * 内边距分别落在 __header(20px 20px 10px) / __body(30px 20px) / __footer(10px 20px 20px)；
- * element-plus 把 padding 提到了 .el-dialog 自己身上（--el-dialog-padding-primary，20px），
- * __body / __footer 反而不带 padding。
- *
- * 本项目 48 个弹窗全部照搬自 v2，其中 37 个把 __header / __body 的 padding 改写成了 0 或自定义值，
- * 在 element-plus 下就只去掉了内层、留下外层那圈 20px —— 表现是弹窗内容四周多出一道白边，
- * 背景色（如省份下钻弹窗的 #eef4fd）铺不到边、圆角和标题栏位置都和 v2 对不上。
- * 这里把盒模型整体还原成 element-ui 的分布，各弹窗里已有的 v2 覆盖就能照常生效。
- *
- * 选择器刻意都保持单类名（0,1,0）：低于组件内 :deep(...) 编译出的 [data-v-x] .el-dialog__body（0,2,0），
- * 组件自己的覆盖依然优先；同时因为 index.scss 在 element-plus/dist/index.css 之后引入，
- * 与 element-plus 同权重的规则由本文件胜出。
- * ------------------------------------------------------------------ */
 .el-dialog {
   padding: 0;
 }

@@ -7,6 +7,12 @@
   justify-content: flex-end;
 }
 
+// Element Plus 的 rightwrapper 默认 flex: 1，会把 prev/next/jumper 挤到左侧，
+// 与「共 X 条」重叠。v2(Element UI) 无此属性，这里覆盖以保持按钮右对齐。
+.el-pagination .el-pagination__rightwrapper {
+  flex: none;
+}
+
 .el-pagination__total {
   position: absolute;
   left: 0;

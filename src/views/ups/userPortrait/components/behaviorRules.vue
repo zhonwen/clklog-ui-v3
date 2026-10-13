@@ -380,7 +380,7 @@ function clickCascader(event: unknown, index: number, item: BehaviorMeasure) {
       setPoverVisible(index, true)
     } else if (val[1] == 'time_scope') {
       // 自定义日期范围
-      datePickerRefs.get(index)?.focus()
+      nextTick(() => datePickerRefs.get(index)?.focus())
     } else {
       // 设置后端字段进行赋值 earlist和latest字段
       const dateTime = splitDateRange(val[1] ?? '')
@@ -804,7 +804,9 @@ defineExpose({ editPortraitEvent, modelObject })
                       @change="clickCascader($event, index, item)"
                       @visible-change="handleVisible"
                     />
-                    <div style="position: absolute; top: 3px; height: 30px">
+                    <div
+                      style="position: absolute; top: 3px; height: 30px; opacity: 0; pointer-events: none"
+                    >
                       <el-date-picker
                         :ref="(el: unknown) => setDatePickerRef(index, el)"
                         v-model="item.echoObj.datePicker"

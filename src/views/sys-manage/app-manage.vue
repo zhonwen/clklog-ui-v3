@@ -369,6 +369,7 @@ onMounted(() => {
                 style="font-weight: 400"
                 prop="projectName"
                 class="gp-item-01"
+                size="default"
               >
                 <el-input
                   v-model="form.projectName"
@@ -653,10 +654,6 @@ onMounted(() => {
 
 .gp-item-01 .el-form-item__content {
   width: 100%;
-}
-
-.gm-input-01 textarea {
-  border: none !important;
 }
 
 .el-form-item__label {

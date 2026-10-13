@@ -5,7 +5,7 @@
  * 父组件 treePage.vue 通过 ref 调 treeListEvent(树数据, 查询参数)。
  * 表格用的是 el-table 的树形（tree-props + row-key），不是 el-tree。
  */
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { blobDownloads } from '@/utils/localDownloadUtil'
 import { exportVisitUriDetailApi } from '@/api/trackingapi/download'
 import { getVisitUriDetailApi } from '@/api/trackingapi/visituri'
@@ -66,8 +66,12 @@ const downPvCount = ref(false)
 const treeList = ref<TreeRow[]>([])
 const commonParams = ref<Record<string, unknown>>({}) // 接口参数
 const uriListEnd = ref<TreeRow[]>([])
-const tableExpands = ref<string[]>([])
 const dialogParams = ref<{ uri: string }>({ uri: '' })
+
+// 表格实例，用于编程式展开树形行（替代 v2 的 expand-row-keys 受控方式）
+const multipleTable = ref<{
+  toggleRowExpansion: (row: TreeRow, expanded?: boolean) => void
+} | null>(null)
 
 const vistedDialogRef = ref<{ vistedApiEvent: (params: Record<string, unknown>) => void } | null>(
   null,
@@ -128,6 +132,14 @@ function handelFlowQuality() {
   initShowTable()
 }
 
+function showManualAddIcon(row: TreeRow) {
+  return !!(row.leafUri && row.leafUri.length == 0 && !row.firstFlag)
+}
+
+function treeRowClassName({ row }: { row: TreeRow }) {
+  return showManualAddIcon(row) ? 'manual-add-row' : ''
+}
+
 // 动态增加节点
 function insertChild(list: TreeRow, id: string | undefined, newChild: TreeRow[]) {
   ;(list.leafUri || []).forEach((item) => {
@@ -137,7 +149,8 @@ function insertChild(list: TreeRow, id: string | undefined, newChild: TreeRow[])
       item.loadingApi = true
       const newArray = JSON.parse(JSON.stringify(newChild)) as TreeRow[]
       item.leafUri = [...new Set([...(item.leafUri || []), ...newArray])]
-      tableExpands.value = [String(item.detail?.numRandom ?? '')]
+      // 子节点写入后，等 treeData 归一化完成再展开该行
+      nextTick(() => multipleTable.value?.toggleRowExpansion(item, true))
       if (uriListEnd.value.length == 0) {
         item.firstFlag = 'istrue'
       }
@@ -209,9 +222,9 @@ function scopeEventApi(
 }
 
 // 二级标题调用接口添加动态数据
-function expandChangeEvent(row: TreeRow, expandedRowKeys: unknown) {
-  tableExpands.value = []
-  if (expandedRowKeys && row.level && !row.loadingApi) {
+// Element Plus 的 expand-change 第二参是 expanded: boolean（非 v2 的数组）
+function expandChangeEvent(row: TreeRow, expanded: boolean) {
+  if (expanded && row.level && !row.loadingApi) {
     const level = row.level
     dialogParams.value.uri = String(row.uri ?? '')
     scopeEventApi(row.uri, '', row.detail?.numRandom, true, level)
@@ -359,28 +372,25 @@ defineExpose({ treeListEvent, initShowTable })
           :data="treeList"
           style="width: 100%"
           :row-key="getRowKeys"
+          :row-class-name="treeRowClassName"
           :tree-props="{ children: 'leafUri', hasChildren: 'hasChildren' }"
           border
           lazy
-          :expand-row-keys="tableExpands"
           @expand-change="expandChangeEvent"
         >
           <el-table-column label="页面地址" width="400px" show-overflow-tooltip>
             <template #default="scope">
               <div
-                v-if="scope.row.leafUri && scope.row.leafUri.length == 0 && !scope.row.firstFlag"
+                v-if="showManualAddIcon(scope.row)"
                 class="tableName"
-                :style="{ 'padding-left': `${scope.row.level * 19}px` }"
                 @click="handleTree(scope.row, '')"
               >
                 <img
                   src="@/assets/images/add.png"
                   style="
-                    width: 12px;
-                    height: 12px;
+                    width: 16px;
+                    height: 16px;
                     object-fit: cover;
-                    margin-right: 10px;
-                    margin-top: 2px;
                     box-sizing: border-box;
                     cursor: pointer;
                   "
@@ -388,7 +398,7 @@ defineExpose({ treeListEvent, initShowTable })
               </div>
 
               <div v-if="scope.row.secondFlag" :style="scope.row.title == '更多' ? 'display:flex; ' : ''">
-                <div style="margin-left: -12px; display: flex">
+                <div class="tree-title-row">
                   <div
                     v-if="scope.row.title == '更多'"
                     class="setMoreCon"
@@ -400,13 +410,13 @@ defineExpose({ treeListEvent, initShowTable })
                     {{ scope.row.title ? scope.row.title : "" }}
                   </div>
                 </div>
-                <div v-if="scope.row.title != '更多'" style="margin-left: -12px">
+                <div v-if="scope.row.title != '更多'" class="second-flag-segment-row">
                   {{ scope.row.segment ? scope.row.segment : "/" }}
                 </div>
               </div>
 
               <div v-else>
-                <div style="margin-left: 5px; display: flex">
+                <div class="tree-title-row">
                   <div
                     v-if="scope.row.title == '更多'"
                     class="setMoreCon"
@@ -497,45 +507,42 @@ defineExpose({ treeListEvent, initShowTable })
   cursor: pointer;
 }
 
-:deep(.el-table__expand-icon--expanded) {
-  transform: rotate(0deg);
-}
-
-:deep(.el-icon-arrow-right::before) {
-  position: relative !important;
-  background: url('../../../../assets/images/add.png') no-repeat 0 3px;
-  content: '';
-  display: block;
+:deep(.el-table__expand-icon) {
   width: 16px;
   height: 16px;
-  font-size: 16px;
-  background-size: 13px;
+  min-width: 16px;
+  flex: 0 0 16px;
+  box-sizing: border-box;
+  padding: 0;
+  margin-right: 6px;
+  border: 0;
+  background: url('../../../../assets/images/add.png') no-repeat center;
+  background-size: 16px 16px;
+  transform: none !important;
 }
 
-// 有子节点 且已展开
+:deep(.el-table__expand-icon .el-icon) {
+  opacity: 0;
+  width: 16px;
+  height: 16px;
+}
+
+// 有子节点且已展开
 :deep(.el-table__expand-icon--expanded) {
-  position: relative !important;
-
-  .el-icon-arrow-right:before {
-    background: url('../../../../assets/images/reduce.png') no-repeat 0 3px;
-    content: '';
-    display: block;
-    width: 16px;
-    height: 16px;
-    font-size: 16px;
-    background-size: 13px;
-  }
+  background-image: url('../../../../assets/images/reduce.png');
+  transform: none !important;
 }
 
-// 没有字节
-:deep(.el-table__placeholder::before) {
-  background: '';
-  content: '';
-  display: block;
-  width: 15px;
-  height: 15px;
-  font-size: 15px;
-  background-size: 15px;
+// 没有子节点时占位宽度与图标保持一致
+:deep(.el-table__placeholder) {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  flex: 0 0 16px;
+}
+
+:deep(.manual-add-row .el-table__placeholder) {
+  display: none;
 }
 
 // 内容区按列对齐（align="center" 时，flex 居中）
@@ -587,7 +594,32 @@ defineExpose({ treeListEvent, initShowTable })
 }
 
 .tableName {
-  position: absolute;
+  position: static;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  flex: 0 0 16px;
+  box-sizing: border-box;
+  margin-right: 6px;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.tableName img {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.tree-title-row {
+  display: flex;
+  align-items: center;
+}
+
+.second-flag-segment-row {
+  margin-left: 0;
 }
 
 .treeStyle {

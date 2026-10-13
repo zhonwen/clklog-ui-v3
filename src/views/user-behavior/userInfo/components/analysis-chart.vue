@@ -873,6 +873,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 20px;
+  margin-bottom: 4px;
 }
 
 .column-eventName {

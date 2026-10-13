@@ -265,8 +265,4 @@ onMounted(() => {
   border: none !important;
   border-bottom: 1px solid #aaa;
 }
-
-.gm-input-01 textarea {
-  border: none !important;
-}
 </style>

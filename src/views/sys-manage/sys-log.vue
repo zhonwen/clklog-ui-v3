@@ -410,10 +410,6 @@ function handleCurrentChange(val: number) {
   width: 100%;
 }
 
-.gm-input-01 textarea {
-  border: none !important;
-}
-
 .el-form-item__label {
   font-size: 20px;
 }

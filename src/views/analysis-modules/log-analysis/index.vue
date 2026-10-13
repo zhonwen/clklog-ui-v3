@@ -174,7 +174,7 @@ watch(commonParams, () => {
         >
           <el-table-column type="expand" fixed="left">
             <template #default="{ row }">
-              <div style="display: flex">
+              <div class="log-expand-content">
                 <div style="width: 50%">
                   <div style="font-size: 16px; font-weight: 600; margin-bottom: 15px">
                     事件属性
@@ -298,6 +298,17 @@ watch(commonParams, () => {
 
 <style lang="scss" scoped>
 // 分页样式 el-pagination 已在 src/styles/index.scss 全局引入（sass 不允许 @use 出现在嵌套块里）
+.log-expand-content {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 20px 50px;
+}
+
+:deep(.el-table__expanded-cell) {
+  padding: 0 !important;
+}
+
 :deep() {
   .custom_button.el-button--medium {
     padding: 0 20px;
